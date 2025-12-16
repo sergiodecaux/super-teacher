@@ -12,6 +12,7 @@ var currentMode = "ai";
 
 document.addEventListener("DOMContentLoaded", function() {
     console.log("✅ Страница загружена");
+    console.log("📦 generateWorksheet:", typeof generateWorksheet);
     console.log("📦 callGroqAI:", typeof callGroqAI);
     
     initModeButtons();
@@ -176,38 +177,89 @@ function loadApiKey() {
 
 
 // ═══════════════════════════════════════════════════════
-// ГЕНЕРАЦИЯ AI
+// ГЕНЕРАЦИЯ ЗАДАНИЙ (ГЛАВНАЯ ФУНКЦИЯ)
 // ═══════════════════════════════════════════════════════
 
 async function generateWithAI() {
-    var apiKeyInput = document.getElementById("api-key");
-    var apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+    // Получаем параметры из конструктора промптов
+    var subject = document.getElementById("subject-select")?.value || "";
+    var grade = document.getElementById("grade-select")?.value || "";
+    var topic = document.getElementById("topic-select")?.value || "";
+    var customTopic = document.getElementById("custom-topic")?.value?.trim() || "";
+    var tasksNum = parseInt(document.getElementById("tasks-num")?.value) || 5;
+    var difficulty = document.querySelector(".diff-btn.active")?.dataset.diff || "mixed";
     
-    // Получаем промпт
-    var request = "";
-    if (typeof getBuiltPrompt === "function") {
-        request = getBuiltPrompt();
-    }
+    // Определяем тему
+    var finalTopic = customTopic || topic;
     
-    if (!request) {
-        showError("Выбери тему!");
+    if (!subject) {
+        showError("Выбери предмет!");
         return;
     }
     
-    if (!apiKey) {
-        showError("Введи API ключ Groq!");
+    if (!finalTopic) {
+        showError("Выбери или напиши тему!");
         return;
     }
     
-    console.log("📝 Промпт:", request);
+    console.log("📝 Генерация:", subject, grade, finalTopic);
+    
+    // Получаем выбранные типы заданий
+    var taskTypes = [];
+    document.querySelectorAll("#task-types input:checked").forEach(function(cb) {
+        taskTypes.push(cb.value);
+    });
     
     showLoading(true);
     hideError();
     
     try {
-        currentWorksheet = await callGroqAI(request, apiKey);
-        showResult();
+        // Сначала пробуем локальную генерацию
+        if (typeof generateWorksheet === "function") {
+            console.log("🎲 Пробуем локальную генерацию...");
+            
+            var localResult = generateWorksheet(subject, grade, finalTopic, taskTypes, difficulty, tasksNum);
+            
+            if (localResult) {
+                console.log("✅ Локальная генерация успешна!");
+                currentWorksheet = localResult;
+                showResult();
+                showLoading(false);
+                return;
+            }
+            
+            console.log("⚠️ Локальный генератор не найден для этой темы, используем AI...");
+        }
+        
+        // Если локальная генерация не сработала — используем AI
+        var apiKeyInput = document.getElementById("api-key");
+        var apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+        
+        if (!apiKey) {
+            showError("Для этой темы нужен API ключ Groq. Получи бесплатно: console.groq.com/keys");
+            showLoading(false);
+            return;
+        }
+        
+        // Формируем промпт для AI
+        var request = "";
+        if (typeof getBuiltPrompt === "function") {
+            request = getBuiltPrompt();
+        } else {
+            request = subject + ", " + grade + " класс. Тема: " + finalTopic;
+        }
+        
+        console.log("🤖 Запрос к AI:", request);
+        
+        if (typeof callGroqAI === "function") {
+            currentWorksheet = await callGroqAI(request, apiKey);
+            showResult();
+        } else {
+            throw new Error("AI модуль не загружен");
+        }
+        
     } catch (error) {
+        console.error("❌ Ошибка:", error);
         showError(error.message);
     } finally {
         showLoading(false);
@@ -315,7 +367,7 @@ function showResult() {
             var elementsHtml = "";
             var elems = task.elements || [];
             for (var k = 0; k < Math.min(elems.length, 6); k++) {
-                elementsHtml += '<span class="element-chip">' + elems[k] + '</span>';
+                elementsHtml += '<span class="element-chip">' + escapeHtml(elems[k]) + '</span>';
             }
             if (elems.length > 6) {
                 elementsHtml += '<span class="element-chip more">+' + (elems.length - 6) + '</span>';
@@ -323,9 +375,9 @@ function showResult() {
             
             html += 
                 '<div class="task-preview" style="border-left: 4px solid ' + color + '">' +
-                    '<h4>' + task.level + ' ' + task.level_name + '</h4>' +
-                    '<div class="instruction">📝 ' + task.instruction + '</div>' +
-                    (task.content ? '<p>' + task.content + '</p>' : '') +
+                    '<h4>' + task.level + ' ' + escapeHtml(task.level_name) + '</h4>' +
+                    '<div class="instruction">📝 ' + escapeHtml(task.instruction) + '</div>' +
+                    (task.content ? '<p>' + escapeHtml(task.content) + '</p>' : '') +
                     '<div class="elements">' + elementsHtml + '</div>' +
                 '</div>';
         }
@@ -339,6 +391,14 @@ function showResult() {
     if (resultSection) {
         resultSection.scrollIntoView({ behavior: "smooth" });
     }
+}
+
+// Экранирование HTML для безопасности
+function escapeHtml(text) {
+    if (!text) return "";
+    var div = document.createElement("div");
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 
