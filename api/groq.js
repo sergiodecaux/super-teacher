@@ -15,14 +15,21 @@ export default async function handler(req, res) {
     try {
         const authHeader = req.headers.authorization;
         
-        if (!authHeader) {
-            return res.status(401).json({ error: 'No API key provided' });
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'Invalid API key format' });
         }
 
+        const apiKey = authHeader.replace('Bearer ', '');
+        if (!apiKey.startsWith('gsk_')) {
+            return res.status(401).json({ error: 'Invalid Groq API key' });
+        }
+
+        console.log('📤 Sending request to Groq...');
+        
         const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
             method: 'POST',
             headers: {
-                'Authorization': authHeader,
+                'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(req.body)
@@ -30,10 +37,20 @@ export default async function handler(req, res) {
 
         const data = await response.json();
         
-        return res.status(response.status).json(data);
+        if (!response.ok) {
+            console.error('❌ Groq error:', data);
+            return res.status(response.status).json(data);
+        }
+
+        console.log('✅ Groq response received');
+        return res.status(200).json(data);
 
     } catch (error) {
-        console.error('Proxy error:', error);
-        return res.status(500).json({ error: error.message });
+        console.error('❌ Proxy error:', error);
+        return res.status(500).json({ 
+            error: { 
+                message: error.message || 'Internal server error' 
+            } 
+        });
     }
 }
