@@ -2,11 +2,11 @@
 // КОНСТАНТЫ И ДЕМО-ДАННЫЕ
 // ═══════════════════════════════════════════════════════
 
-const LEVEL_ICONS = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
-const LEVEL_NAMES = ["Разминка", "Тренировка", "Закрепление", "Сложное", "Мастер"];
-const LEVEL_COLORS = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
+var LEVEL_ICONS = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
+var LEVEL_NAMES = ["Разминка", "Тренировка", "Закрепление", "Сложное", "Мастер"];
+var LEVEL_COLORS = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
 
-const THEMES = {
+var THEMES = {
     default: { name: "Стандартная", emoji: "🎯" },
     pirates: { name: "Пираты", emoji: "🏴‍☠️" },
     space: { name: "Космос", emoji: "🚀" },
@@ -17,7 +17,7 @@ const THEMES = {
     nature: { name: "Природа", emoji: "🌿" }
 };
 
-const EXAMPLES = {
+var QUICK_EXAMPLES = {
     preschool: [
         "Счёт до 5",
         "Счёт до 10",
@@ -51,7 +51,7 @@ const EXAMPLES = {
     ]
 };
 
-const DEMO_WORKSHEET = {
+var DEMO_WORKSHEET = {
     title: "🧮 Математика: сложение до 10",
     subtitle: "1 класс — тренировочные задания",
     tasks: [
