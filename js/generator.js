@@ -73,57 +73,63 @@ function getGenerator(subject, topic) {
 }
 
 // ═══════════════════════════════════════════════════════
-// ГЕНЕРАТОР: ОКОНЧАНИЯ СУЩЕСТВИТЕЛЬНЫХ
+// ГЕНЕРАТОР: ОКОНЧАНИЯ СУЩЕСТВИТЕЛЬНЫХ (ИСПРАВЛЕННЫЙ)
 // ═══════════════════════════════════════════════════════
 
 function generateEndingsWorksheet(grade, topic, taskTypes, difficulty, tasksCount) {
     var tasks = [];
-    var allNouns = WORD_BANKS.nouns.decl1.concat(WORD_BANKS.nouns.decl2, WORD_BANKS.nouns.decl3);
     
-    // Задание 1: Вставь окончание (простое)
-    tasks.push(generateEndingsTask1());
-    
-    // Задание 2: Е или И?
-    tasks.push(generateEndingsTask2());
-    
-    // Задание 3: Текст с пропусками
-    tasks.push(generateEndingsTask3());
-    
-    // Задание 4: Исправь ошибки
-    tasks.push(generateEndingsTask4());
-    
-    // Задание 5: Поставь в нужный падеж
-    tasks.push(generateEndingsTask5());
+    tasks.push(generateEndingsTask1()); // Вставь окончание
+    tasks.push(generateEndingsTask2()); // Е или И?
+    tasks.push(generateEndingsTask3()); // Текст с пропусками
+    tasks.push(generateEndingsTask4()); // Исправь ошибки
+    tasks.push(generateEndingsTask5()); // Поставь в нужный падеж
     
     return {
         title: "📝 Окончания существительных",
-        subtitle: "Русский язык, " + grade + " класс",
+        subtitle: "Русский язык, " + (grade || "3-4") + " класс",
         tasks: tasks.slice(0, tasksCount || 5),
         motivation: "Отлично! Ты разобрался в окончаниях! 🌟"
     };
 }
 
 function generateEndingsTask1() {
-    var nouns = pickRandom(WORD_BANKS.nouns.decl1.concat(WORD_BANKS.nouns.decl3), 6);
-    var cases = ["gen", "dat", "prep"];
-    var caseQuestions = {gen: "кого? чего?", dat: "кому? чему?", prep: "о ком? о чём?"};
-    var caseNames = {gen: "Р.п.", dat: "Д.п.", prep: "П.п."};
-    var prepositions = {gen: ["у", "от", "до", "из", "без"], dat: ["к", "по"], prep: ["о", "на", "в"]};
+    // Берём слова из разных склонений
+    var decl1Words = pickRandom(WORD_BANKS.nouns.decl1, 3);
+    var decl3Words = pickRandom(WORD_BANKS.nouns.decl3, 3);
+    var allWords = shuffle(decl1Words.concat(decl3Words));
+    
+    var caseOptions = [
+        {key: "gen", prep: "без", question: "без кого? чего?", name: "Р.п."},
+        {key: "gen", prep: "у", question: "у кого? чего?", name: "Р.п."},
+        {key: "gen", prep: "от", question: "от кого? чего?", name: "Р.п."},
+        {key: "dat", prep: "к", question: "к кому? чему?", name: "Д.п."},
+        {key: "dat", prep: "по", question: "по кому? чему?", name: "Д.п."},
+        {key: "prep", prep: "о", question: "о ком? о чём?", name: "П.п."},
+        {key: "prep", prep: "на", question: "на ком? на чём?", name: "П.п."},
+        {key: "prep", prep: "в", question: "в ком? в чём?", name: "П.п."}
+    ];
     
     var elements = [];
     var answers = [];
     
-    nouns.forEach(function(noun) {
-        var caseKey = cases[randomInt(0, cases.length - 1)];
-        var prep = prepositions[caseKey][randomInt(0, prepositions[caseKey].length - 1)];
-        var form = noun[caseKey];
-        var masked = maskEnding(noun.word, form);
-        var declNum = getDeclension(noun.word);
+    allWords.forEach(function(noun, idx) {
+        var caseOpt = caseOptions[idx % caseOptions.length];
+        var form = noun[caseOpt.key];
         
-        elements.push(prep + " " + masked + " (" + caseQuestions[caseKey] + ")");
-        answers.push(prep + " " + form.toUpperCase().slice(-2).toLowerCase() === form.slice(-2) 
-            ? form.slice(0, -1) + form.slice(-1).toUpperCase() 
-            : form + " (" + declNum + " скл., " + caseNames[caseKey] + ")");
+        // Определяем склонение
+        var isDecl3 = WORD_BANKS.nouns.decl3.some(function(n) { return n.word === noun.word; });
+        var isDecl1 = WORD_BANKS.nouns.decl1.some(function(n) { return n.word === noun.word; });
+        var declNum = isDecl3 ? "3" : (isDecl1 ? "1" : "2");
+        
+        // Маскируем окончание (последние 1-2 буквы)
+        var masked = form.slice(0, -1) + "_";
+        
+        elements.push(caseOpt.prep + " " + masked + " (" + caseOpt.question + ")");
+        
+        // Выделяем окончание заглавной буквой
+        var ending = form.slice(-1).toUpperCase();
+        answers.push(caseOpt.prep + " " + form.slice(0, -1) + ending + " (" + declNum + " скл., " + caseOpt.name + ")");
     });
     
     return {
@@ -146,19 +152,23 @@ function generateEndingsTask2() {
     var answers = [];
     
     mixed.forEach(function(noun) {
-        var isDecl3 = WORD_BANKS.nouns.decl3.indexOf(noun) !== -1;
-        var caseKey = "prep"; // Предложный падеж
-        var form = noun[caseKey];
-        var prep = "на";
+        var isDecl3 = WORD_BANKS.nouns.decl3.some(function(n) { return n.word === noun.word; });
+        var declNum = isDecl3 ? "3" : "1";
+        
+        // Используем предложный падеж
+        var form = noun.prep; // "о маме", "о ночи" и т.д.
+        
+        // Убираем предлог из формы (если есть)
+        var cleanForm = form.replace(/^(о |об |на |в |при )/, "");
         
         // Маскируем последнюю букву
-        var masked = form.slice(0, -1) + "_";
+        var masked = cleanForm.slice(0, -1) + "_";
         
-        elements.push(prep + " " + masked + " (-е/-и)");
+        // Определяем правильное окончание
+        var correctEnding = isDecl3 ? "И" : "Е";
         
-        var ending = isDecl3 ? "И" : "Е";
-        var declNum = isDecl3 ? "3" : "1";
-        answers.push(prep + " " + form.slice(0, -1) + ending + " (" + declNum + " скл., П.п.)");
+        elements.push("на " + masked + " (-е/-и)");
+        answers.push("на " + cleanForm.slice(0, -1) + correctEnding + " (" + declNum + " скл., П.п.)");
     });
     
     return {
@@ -172,36 +182,47 @@ function generateEndingsTask2() {
 }
 
 function generateEndingsTask3() {
+    // Выбираем 4 слова 1 склонения для связного текста
     var nouns = pickRandom(WORD_BANKS.nouns.decl1, 4);
+    
     var templates = [
-        "Мы вышли из {0} и пошли к {1}.",
-        "У {2} остановились отдохнуть.",
-        "На {3} сидела птица."
+        {prep: "из", key: "gen", name: "Р.п."},
+        {prep: "к", key: "dat", name: "Д.п."},
+        {prep: "у", key: "gen", name: "Р.п."},
+        {prep: "на", key: "prep", name: "П.п."}
     ];
     
-    var text = "";
     var elements = [];
     var answers = [];
-    var prepositions = ["из", "к", "у", "на"];
-    var cases = ["gen", "dat", "gen", "prep"];
-    var caseNames = ["Р.п.", "Д.п.", "Р.п.", "П.п."];
+    var textParts = [];
+    
+    // Создаём осмысленный текст
+    var sentences = [
+        "Мы вышли " + templates[0].prep + " {0} и пошли " + templates[1].prep + " {1}.",
+        templates[2].prep.charAt(0).toUpperCase() + templates[2].prep.slice(1) + " {2} остановились отдохнуть.",
+        templates[3].prep.charAt(0).toUpperCase() + templates[3].prep.slice(1) + " {3} пели птицы."
+    ];
     
     nouns.forEach(function(noun, i) {
-        var form = noun[cases[i]];
-        var masked = maskEnding(noun.word, form);
-        var prep = prepositions[i];
+        var tmpl = templates[i];
+        var form = noun[tmpl.key];
         
-        elements.push(prep + " " + masked + " →");
-        answers.push(prep + " " + highlightEnding(noun.word, form) + " (" + caseNames[i] + ")");
+        // Убираем предлог из формы если он там есть
+        var cleanForm = form.replace(/^(о |об |на |в |при )/, "");
+        
+        // Маскируем окончание
+        var masked = cleanForm.slice(0, -1) + "_";
+        
+        elements.push(tmpl.prep + " " + masked + " →");
+        answers.push(tmpl.prep + " " + cleanForm + " (" + tmpl.name + ")");
     });
     
-    // Создаём текст
-    text = "Мы вышли " + prepositions[0] + " " + maskEnding(nouns[0].word, nouns[0][cases[0]]) + 
-           " и пошли " + prepositions[1] + " " + maskEnding(nouns[1].word, nouns[1][cases[1]]) + ". " +
-           prepositions[2].charAt(0).toUpperCase() + prepositions[2].slice(1) + " " + 
-           maskEnding(nouns[2].word, nouns[2][cases[2]]) + " остановились. " +
-           prepositions[3].charAt(0).toUpperCase() + prepositions[3].slice(1) + " " + 
-           maskEnding(nouns[3].word, nouns[3][cases[3]]) + " пели птицы.";
+    // Собираем текст
+    var text = sentences[0]
+        .replace("{0}", nouns[0][templates[0].key].replace(/^(о |об )/, "").slice(0, -1) + "_")
+        .replace("{1}", nouns[1][templates[1].key].slice(0, -1) + "_") + " " +
+        sentences[1].replace("{2}", nouns[2][templates[2].key].slice(0, -1) + "_") + " " +
+        sentences[2].replace("{3}", nouns[3].prep.replace(/^(о |об |на |в )/, "").slice(0, -1) + "_");
     
     return {
         level: "⭐⭐⭐",
@@ -214,29 +235,51 @@ function generateEndingsTask3() {
 }
 
 function generateEndingsTask4() {
-    // Генерируем предложения с ОШИБКАМИ
-    var nouns = pickRandom(WORD_BANKS.nouns.decl1.concat(WORD_BANKS.nouns.decl3), 4);
+    // Генерируем предложения с НАСТОЯЩИМИ ОШИБКАМИ
+    var decl1 = pickRandom(WORD_BANKS.nouns.decl1, 2);
+    var decl3 = pickRandom(WORD_BANKS.nouns.decl3, 2);
+    var allNouns = shuffle(decl1.concat(decl3));
+    
     var elements = [];
     var answers = [];
     
-    nouns.forEach(function(noun) {
+    var sentenceTemplates = [
+        {template: "Дети играли на {word}.", prep: "на", key: "prep"},
+        {template: "Мы говорили о {word}.", prep: "о", key: "prep"},
+        {template: "Я написал письмо {word}.", prep: "", key: "dat"},
+        {template: "Книга лежит на {word}.", prep: "на", key: "prep"}
+    ];
+    
+    allNouns.forEach(function(noun, i) {
+        var tmpl = sentenceTemplates[i % sentenceTemplates.length];
         var isDecl3 = WORD_BANKS.nouns.decl3.some(function(n) { return n.word === noun.word; });
-        var caseKey = "prep";
-        var correctForm = noun[caseKey];
         
-        // Создаём НЕПРАВИЛЬНУЮ форму
-        var wrongEnding = isDecl3 ? "е" : "и";
-        var wrongForm = correctForm.slice(0, -1) + wrongEnding;
+        // Получаем правильную форму
+        var correctForm = noun[tmpl.key];
+        // Убираем предлог если есть
+        correctForm = correctForm.replace(/^(о |об |на |в |при )/, "");
         
-        var sentence = "Мы говорили о " + wrongForm + ".";
-        if (randomInt(0, 1) === 0) {
-            sentence = "Дети играли на " + wrongForm + ".";
+        // Создаём НЕПРАВИЛЬНУЮ форму (меняем Е на И или наоборот)
+        var lastChar = correctForm.slice(-1).toLowerCase();
+        var wrongEnding;
+        
+        if (lastChar === "е") {
+            wrongEnding = "и";
+        } else if (lastChar === "и") {
+            wrongEnding = "е";
+        } else if (lastChar === "у" || lastChar === "ю") {
+            wrongEnding = "е";
+        } else {
+            wrongEnding = "и";
         }
         
-        var correctEnding = isDecl3 ? "И" : "Е";
+        var wrongForm = correctForm.slice(0, -1) + wrongEnding;
+        
+        // Создаём предложение с ошибкой
+        var sentence = tmpl.template.replace("{word}", wrongForm);
         
         elements.push(sentence);
-        answers.push(correctForm.slice(0, -1) + correctEnding + " (не " + wrongForm + ")");
+        answers.push(correctForm + " (не " + wrongForm + ")");
     });
     
     return {
@@ -250,27 +293,39 @@ function generateEndingsTask4() {
 }
 
 function generateEndingsTask5() {
-    var nouns = pickRandom(WORD_BANKS.nouns.decl1.concat(WORD_BANKS.nouns.decl3), 5);
+    // Слова в НАЧАЛЬНОЙ форме — ученик должен изменить
+    var decl1 = pickRandom(WORD_BANKS.nouns.decl1, 3);
+    var decl3 = pickRandom(WORD_BANKS.nouns.decl3, 2);
+    var allNouns = shuffle(decl1.concat(decl3));
+    
     var templates = [
-        {prep: "к", caseKey: "dat", caseName: "Д.п."},
-        {prep: "о", caseKey: "prep", caseName: "П.п."},
-        {prep: "по", caseKey: "dat", caseName: "Д.п."},
-        {prep: "от", caseKey: "gen", caseName: "Р.п."},
-        {prep: "без", caseKey: "gen", caseName: "Р.п."}
+        {prep: "к", key: "dat", name: "Д.п."},
+        {prep: "о", key: "prep", name: "П.п."},
+        {prep: "без", key: "gen", name: "Р.п."},
+        {prep: "от", key: "gen", name: "Р.п."},
+        {prep: "по", key: "dat", name: "Д.п."}
     ];
     
     var elements = [];
     var answers = [];
     
-    nouns.forEach(function(noun, i) {
+    allNouns.forEach(function(noun, i) {
         var tmpl = templates[i % templates.length];
-        var correctForm = noun[tmpl.caseKey];
-        var isDecl3 = WORD_BANKS.nouns.decl3.some(function(n) { return n.word === noun.word; });
-        var declNum = isDecl3 ? "3" : (WORD_BANKS.nouns.decl1.some(function(n) { return n.word === noun.word; }) ? "1" : "2");
         
-        // Слово в НАЧАЛЬНОЙ форме в скобках!
-        elements.push(tmpl.prep + " (" + noun.word + ") →");
-        answers.push(tmpl.prep + " " + correctForm + " (" + declNum + " скл., " + tmpl.caseName + ")");
+        // Слово в НАЧАЛЬНОЙ форме (именительный падеж)
+        var initialForm = noun.word;
+        
+        // Правильная форма
+        var correctForm = noun[tmpl.key];
+        // Убираем предлог если он уже есть в форме
+        correctForm = correctForm.replace(/^(о |об |на |в |при )/, "");
+        
+        // Определяем склонение
+        var isDecl3 = WORD_BANKS.nouns.decl3.some(function(n) { return n.word === noun.word; });
+        var declNum = isDecl3 ? "3" : "1";
+        
+        elements.push(tmpl.prep + " (" + initialForm + ") →");
+        answers.push(tmpl.prep + " " + correctForm + " (" + declNum + " скл., " + tmpl.name + ")");
     });
     
     return {
@@ -281,35 +336,6 @@ function generateEndingsTask5() {
         elements: elements,
         answers: answers
     };
-}
-
-// Вспомогательные функции
-function maskEnding(base, form) {
-    // Находим общую часть и маскируем окончание
-    var common = 0;
-    for (var i = 0; i < Math.min(base.length, form.length); i++) {
-        if (base[i].toLowerCase() === form[i].toLowerCase()) common++;
-        else break;
-    }
-    if (common < 2) common = Math.min(base.length, form.length) - 2;
-    return form.slice(0, common) + "_";
-}
-
-function highlightEnding(base, form) {
-    var common = 0;
-    for (var i = 0; i < Math.min(base.length, form.length); i++) {
-        if (base[i].toLowerCase() === form[i].toLowerCase()) common++;
-        else break;
-    }
-    if (common < 2) common = Math.min(base.length, form.length) - 2;
-    return form.slice(0, common) + form.slice(common).toUpperCase();
-}
-
-function getDeclension(word) {
-    if (WORD_BANKS.nouns.decl1.some(function(n) { return n.word === word; })) return "1";
-    if (WORD_BANKS.nouns.decl2.some(function(n) { return n.word === word; })) return "2";
-    if (WORD_BANKS.nouns.decl3.some(function(n) { return n.word === word; })) return "3";
-    return "?";
 }
 // ═══════════════════════════════════════════════════════
 // ГЕНЕРАТОР: СКЛОНЕНИЕ СУЩЕСТВИТЕЛЬНЫХ
