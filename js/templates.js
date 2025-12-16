@@ -14,7 +14,7 @@ var THEMES = {
     sweets: { name: "Сладости", emoji: "🍭" },
     dinosaurs: { name: "Динозавры", emoji: "🦖" },
     fairytale: { name: "Сказки", emoji: "🏰" },
-    nature: { name: "Природа", emoji: "🌿" }
+    mouse: { name: "Мышонок", emoji: "🐭" }
 };
 
 var QUICK_EXAMPLES = {

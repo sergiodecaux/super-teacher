@@ -10,7 +10,7 @@ var PRINT_THEMES = {
     sweets: { bg: "#fce4ec", accent: "#e91e63", emoji: "🍭🍬🧁🍩" },
     dinosaurs: { bg: "#efebe9", accent: "#6d4c41", emoji: "🦖🦕🌋🥚" },
     fairytale: { bg: "#f3e5f5", accent: "#9c27b0", emoji: "🏰👸🐉✨" },
-    nature: { bg: "#e0f2f1", accent: "#00897b", emoji: "🌿🌸🦋🌻" }
+    mouse: { bg: "#eff6ff", accent: "#3b82f6", emoji: "🐭🧀⭐🎈" }
 };
 
 function getThemeStyles(themeName) {
@@ -19,7 +19,8 @@ function getThemeStyles(themeName) {
 }
 
 function generateWorksheetHTML(data, themeName) {
-    var theme = getThemeStyles(themeName || "default");
+    var themeKey = themeName || "default";
+    var theme = getThemeStyles(themeKey);
     var tasks = data.tasks || [];
     var totalPages = tasks.length;
     
@@ -55,11 +56,13 @@ function generateWorksheetHTML(data, themeName) {
     html += '}';
     html += '.page:last-child { page-break-after: auto; }';
     
-    // Заголовок
-    html += '.header { text-align: center; margin-bottom: 12px; flex-shrink: 0; }';
-    html += '.title { font-size: 22px; font-weight: 700; color: ' + theme.accent + '; margin-bottom: 4px; }';
-    html += '.subtitle { font-size: 13px; color: #666; }';
-    html += '.level { font-size: 16px; margin-top: 8px; color: #333; }';
+    // Заголовок с маскотом
+    html += '.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-shrink: 0; }';
+    html += '.header-text { max-width: calc(100% - 70px); }';
+    html += '.header-text .title { font-size: 22px; font-weight: 700; color: ' + theme.accent + '; margin-bottom: 4px; }';
+    html += '.header-text .subtitle { font-size: 13px; color: #666; }';
+    html += '.header-text .level { font-size: 16px; margin-top: 8px; color: #333; }';
+    html += '.header-mascot img { width: 56px; height: 56px; object-fit: contain; }';
     
     // Инфо-поля
     html += '.info-row { display: flex; gap: 15px; margin-bottom: 12px; flex-wrap: wrap; flex-shrink: 0; }';
@@ -113,14 +116,18 @@ function generateWorksheetHTML(data, themeName) {
     for (var i = 0; i < tasks.length; i++) {
         var task = tasks[i];
         var levelEmoji = theme.emoji.charAt(i % theme.emoji.length) || "⭐";
+        var mascotPath = 'img/themes/' + themeKey + '/mascot.svg';
         
         html += '<div class="page">';
         
         // Заголовок
         html += '<div class="header">';
-        html += '<div class="title">' + levelEmoji + ' ' + escapeHtmlPdf(data.title || "Рабочий лист") + '</div>';
-        html += '<div class="subtitle">' + escapeHtmlPdf(data.subtitle || "") + '</div>';
-        html += '<div class="level">' + escapeHtmlPdf(task.level || "⭐") + ' ' + escapeHtmlPdf(task.level_name || "Задание") + '</div>';
+        html += '  <div class="header-text">';
+        html += '    <div class="title">' + levelEmoji + ' ' + escapeHtmlPdf(data.title || "Рабочий лист") + '</div>';
+        html += '    <div class="subtitle">' + escapeHtmlPdf(data.subtitle || "") + '</div>';
+        html += '    <div class="level">' + escapeHtmlPdf(task.level || "⭐") + ' ' + escapeHtmlPdf(task.level_name || "Задание") + '</div>';
+        html += '  </div>';
+        html += '  <div class="header-mascot"><img src="' + mascotPath + '" alt="Тема"></div>';
         html += '</div>';
         
         // Поля для имени

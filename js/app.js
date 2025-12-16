@@ -356,10 +356,22 @@ function showResult() {
     var themeSelect = document.getElementById("theme-select");
     var themeName = themeSelect ? themeSelect.value : "default";
     var theme = THEMES[themeName] || THEMES.default;
+
+    // Цвета темы для предпросмотра
+    var themeStyles;
+    if (typeof PRINT_THEMES !== "undefined") {
+        themeStyles = PRINT_THEMES[themeName] || PRINT_THEMES.default;
+    } else {
+        themeStyles = { bg: "#f8f9fa", accent: "#7c3aed" };
+    }
+
     if (statTheme) statTheme.textContent = theme.emoji + " " + theme.name;
     
     if (preview) {
         var html = "";
+        var mascotSrc = "img/themes/" + themeName + "/mascot.svg";
+        var bgColor = themeStyles.bg || "#ffffff";
+
         for (var j = 0; j < tasks.length; j++) {
             var task = tasks[j];
             var color = LEVEL_COLORS[j % LEVEL_COLORS.length];
@@ -374,9 +386,12 @@ function showResult() {
             }
             
             html += 
-                '<div class="task-preview" style="border-left: 4px solid ' + color + '">' +
-                    '<h4>' + task.level + ' ' + escapeHtml(task.level_name) + '</h4>' +
-                    '<div class="instruction">📝 ' + escapeHtml(task.instruction) + '</div>' +
+                '<div class="task-preview" style="border-left: 4px solid ' + color + '; background:' + bgColor + ';">' +
+                    '<div class="task-preview-header">' +
+                        '<h4 class="task-preview-title">' + escapeHtml(task.level || "") + ' ' + escapeHtml(task.level_name || ("Задание " + (j + 1))) + '</h4>' +
+                        '<img class="task-mascot" src="' + mascotSrc + '" alt="Тема: ' + escapeHtml(theme.name) + '">' +
+                    '</div>' +
+                    '<div class="instruction">📝 ' + escapeHtml(task.instruction || "Выполни задание.") + '</div>' +
                     (task.content ? '<p>' + escapeHtml(task.content) + '</p>' : '') +
                     '<div class="elements">' + elementsHtml + '</div>' +
                 '</div>';

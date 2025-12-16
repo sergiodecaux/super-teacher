@@ -496,19 +496,41 @@ body {
     font-size: 18px;
 }
 
+/* Карточки предпросмотра с маскотами */
 .task-preview {
-    background: white;
-    padding: 20px;
-    border-radius: 12px;
-    margin-bottom: 12px;
+    background: #ffffff;
+    padding: 18px 18px 16px;
+    border-radius: 16px;
+    margin-bottom: 16px;
     border-left: 4px solid #7c3aed;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+}
+
+.task-preview-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+}
+
+.task-preview-title {
+    font-size: 16px;
+    font-weight: 700;
+    color: #1f2937;
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .task-preview h4 {
-    font-size: 16px;
-    margin-bottom: 8px;
-    color: #1f2937;
+    margin: 0;
+}
+
+.task-mascot {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    flex-shrink: 0;
 }
 
 .task-preview .instruction {

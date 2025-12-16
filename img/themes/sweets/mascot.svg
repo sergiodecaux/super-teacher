@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Розовый фон -->
+  <circle cx="60" cy="60" r="56" fill="#fdf2f8" />
+
+  <!-- Корзинка кекса -->
+  <path
+    d="M40 70 L80 70 L74 92 Q60 98 46 92 Z"
+    fill="#f97373"
+    stroke="#e11d48"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M44 72 L76 72"
+    stroke="#fecdd3"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+  <path
+    d="M48 76 L72 76"
+    stroke="#fecdd3"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+
+  <!-- Крем -->
+  <path
+    d="M40 70 Q38 60 46 56 Q48 48 60 48 Q72 48 74 56 Q82 60 80 70 Z"
+    fill="#fee2ff"
+    stroke="#e879f9"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+
+  <!-- Вишенка -->
+  <circle cx="60" cy="42" r="5" fill="#f97373" stroke="#e11d48" stroke-width="1.5" />
+  <path
+    d="M60 42 Q60 36 66 34"
+    fill="none"
+    stroke="#16a34a"
+    stroke-width="1.5"
+    stroke-linecap="round"
+  />
+
+  <!-- Глазки -->
+  <circle cx="54" cy="62" r="2.2" fill="#1f2933" />
+  <circle cx="66" cy="62" r="2.2" fill="#1f2933" />
+
+  <!-- Улыбка -->
+  <path
+    d="M54 68 Q60 72 66 68"
+    fill="none"
+    stroke="#fb7185"
+    stroke-width="1.8"
+    stroke-linecap="round"
+  />
+
+  <!-- Посыпка -->
+  <rect x="48" y="54" width="2" height="4" rx="1" fill="#f97316" />
+  <rect x="56" y="50" width="2" height="4" rx="1" fill="#22c55e" />
+  <rect x="64" y="52" width="2" height="4" rx="1" fill="#3b82f6" />
+  <rect x="70" y="56" width="2" height="4" rx="1" fill="#e11d48" />
+</svg>

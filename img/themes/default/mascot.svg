@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120">
+  <!-- Мягкий фон -->
+  <circle cx="60" cy="60" r="56" fill="#eff6ff" />
+
+  <!-- Медалька-лента -->
+  <path
+    d="M48 82 L40 104 L52 96 L60 108 L68 96 L80 104 L72 82 Z"
+    fill="#bfdbfe"
+    stroke="#60a5fa"
+    stroke-width="2"
+    stroke-linejoin="round"
+  />
+
+  <!-- Звезда -->
+  <polygon
+    points="60,24 69,44 92,46 74,60 80,82 60,71 40,82 46,60 28,46 51,44"
+    fill="#facc15"
+    stroke="#f59e0b"
+    stroke-width="3"
+    stroke-linejoin="round"
+  />
+
+  <!-- Глаза -->
+  <circle cx="52" cy="52" r="3" fill="#78350f" />
+  <circle cx="68" cy="52" r="3" fill="#78350f" />
+
+  <!-- Улыбка -->
+  <path
+    d="M52 60 Q60 66 68 60"
+    fill="none"
+    stroke="#b45309"
+    stroke-width="2"
+    stroke-linecap="round"
+  />
+
+  <!-- Блики / искорки -->
+  <circle cx="26" cy="32" r="2" fill="#fde68a" />
+  <circle cx="96" cy="40" r="2.2" fill="#fde68a" />
+  <circle cx="30" cy="86" r="1.8" fill="#fde68a" />
+  <circle cx="94" cy="78" r="2" fill="#fde68a" />
+</svg>
