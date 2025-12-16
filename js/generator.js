@@ -1639,30 +1639,6 @@ function generateNumberCompositionWorksheet(grade, topic, taskTypes, difficulty,
     tasks.push(generateHouseTask(targetNum));
     
     // Задание 4: Найди пару
-    tasks.push(generatePairTask(target
-    // ═══════════════════════════════════════════════════════
-// ГЕНЕРАТОР: СОСТАВ ЧИСЛА (продолжение)
-// ═══════════════════════════════════════════════════════
-
-function generateNumberCompositionWorksheet(grade, topic, taskTypes, difficulty, tasksCount) {
-    var tasks = [];
-    var topicLower = (topic || "").toLowerCase();
-    var targetNum = 10;
-    
-    if (topicLower.indexOf("5") !== -1) targetNum = 5;
-    if (topicLower.indexOf("10") !== -1) targetNum = 10;
-    if (topicLower.indexOf("20") !== -1) targetNum = 20;
-    
-    // Задание 1: Дополни до числа
-    tasks.push(generateCompositionTask1(targetNum));
-    
-    // Задание 2: Разбей число
-    tasks.push(generateCompositionTask2(targetNum));
-    
-    // Задание 3: Домики
-    tasks.push(generateHouseTask(targetNum));
-    
-    // Задание 4: Найди пару
     tasks.push(generatePairTask(targetNum));
     
     // Задание 5: Все способы
@@ -1907,4 +1883,3 @@ function createSequenceTask(seqData, level, levelName) {
 
 // Функция доступна глобально
 window.generateWorksheet = generateWorksheet;
-        
