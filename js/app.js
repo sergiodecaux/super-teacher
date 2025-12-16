@@ -1,47 +1,221 @@
 // ═══════════════════════════════════════════════════════
-// СОСТОЯНИЕ ПРИЛОЖЕНИЯ
+// ═══════════════════════════════════════════════════════
+// AI.JS - РАБОТА С API
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+
+const API_URL = "/api/groq";
+const MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
+const TEMPERATURE = 0.3;
+
+const SYSTEM_PROMPT = `Ты генератор учебных карточек для начальной школы России.
+Возвращай ТОЛЬКО JSON. Никакого текста до или после JSON.`;
+
+const TEMPLATES = {
+    "окончан": {
+        title: "📝 Окончания существительных",
+        subtitle: "Русский язык, 3-4 класс"
+    },
+    "склонен": {
+        title: "📚 Склонение существительных", 
+        subtitle: "Русский язык, 3-4 класс"
+    },
+    "падеж": {
+        title: "📖 Падежи существительных",
+        subtitle: "Русский язык, 3-4 класс"
+    },
+    "спряжен": {
+        title: "🔤 Спряжение глаголов",
+        subtitle: "Русский язык, 4 класс"
+    },
+    "математ": {
+        title: "🧮 Математика",
+        subtitle: "Примеры и задачи"
+    }
+};
+
+function buildPrompt(userRequest) {
+    const requestLower = userRequest.toLowerCase();
+    
+    let template = { title: "📝 Рабочий лист", subtitle: "" };
+    for (const [key, tmpl] of Object.entries(TEMPLATES)) {
+        if (new RegExp(key, 'i').test(requestLower)) {
+            template = tmpl;
+            break;
+        }
+    }
+
+    return `Создай 5 учебных карточек.
+
+ТЕМА: ${userRequest}
+НАЗВАНИЕ: ${template.title}
+
+Каждая карточка должна содержать:
+- level: "⭐" до "⭐⭐⭐⭐⭐"
+- level_name: название задания
+- instruction: что делать ученику
+- elements: массив из 6-8 заданий с пропусками (_) или вопросами (?)
+- answers: массив правильных ответов
+
+ПРИМЕР ПРАВИЛЬНОГО ЗАДАНИЯ:
+{
+  "level": "⭐",
+  "level_name": "Вставь окончание",
+  "instruction": "Вставь пропущенное окончание существительного.",
+  "content": "",
+  "elements": [
+    "на парт_ (на чём?)",
+    "у дорог_ (у чего?)",
+    "к бабушк_ (к кому?)",
+    "в тетрад_ (в чём?)",
+    "без сол_ (без чего?)",
+    "о мам_ (о ком?)"
+  ],
+  "answers": [
+    "на партЕ (1 скл., П.п.)",
+    "у дорогИ (1 скл., Р.п.)",
+    "к бабушкЕ (1 скл., Д.п.)",
+    "в тетрадИ (3 скл., П.п.)",
+    "без солИ (3 скл., Р.п.)",
+    "о мамЕ (1 скл., П.п.)"
+  ]
+}
+
+ВАЖНО:
+- elements — это ЗАДАНИЯ с пропусками, НЕ готовые ответы!
+- Пропуски обозначай символом _
+- В каждом задании 6-8 элементов
+
+ВЕРНИ ТОЛЬКО JSON:
+{
+  "title": "${template.title}",
+  "subtitle": "${template.subtitle}",
+  "tasks": [...5 заданий...],
+  "motivation": "Молодец! ⭐"
+}`;
+}
+
+async function callGroqAI(userRequest, apiKey) {
+    console.log("🚀 callGroqAI:", userRequest);
+    
+    for (const model of MODELS) {
+        try {
+            console.log(`🔄 Модель: ${model}`);
+            
+            const response = await fetch(API_URL, {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: [
+                        { role: "system", content: SYSTEM_PROMPT },
+                        { role: "user", content: buildPrompt(userRequest) }
+                    ],
+                    max_tokens: 4000,
+                    temperature: TEMPERATURE
+                })
+            });
+            
+            if (response.status === 429) {
+                console.log("⚠️ Лимит, ждём...");
+                await new Promise(r => setTimeout(r, 1000));
+                continue;
+            }
+            
+            if (!response.ok) {
+                const err = await response.json().catch(() => ({}));
+                throw new Error(err.error?.message || `HTTP ${response.status}`);
+            }
+            
+            const data = await response.json();
+            const text = data.choices?.[0]?.message?.content;
+            
+            if (!text) continue;
+            
+            console.log("📄 Ответ:", text.substring(0, 200));
+            
+            const worksheet = parseWorksheet(text);
+            if (worksheet) return worksheet;
+            
+        } catch (error) {
+            console.error(`❌ ${model}:`, error.message);
+            continue;
+        }
+    }
+    
+    throw new Error("Ошибка генерации. Попробуй ещё раз.");
+}
+
+function parseWorksheet(text) {
+    text = text.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
+    
+    const match = text.match(/\{[\s\S]*\}/);
+    if (!match) return null;
+    
+    try {
+        const json = JSON.parse(
+            match[0].replace(/,\s*}/g, "}").replace(/,\s*]/g, "]")
+        );
+        
+        if (!json.tasks?.length) return null;
+        
+        const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
+        
+        json.tasks = json.tasks.map((task, i) => ({
+            level: task.level || levels[i],
+            level_name: task.level_name || `Задание ${i+1}`,
+            instruction: task.instruction || "Выполни задание.",
+            content: task.content || "",
+            elements: Array.isArray(task.elements) ? task.elements.filter(x => x) : [],
+            answers: Array.isArray(task.answers) ? task.answers.filter(x => x) : []
+        })).filter(t => t.elements.length > 0 || t.content);
+        
+        return {
+            title: json.title || "Рабочий лист",
+            subtitle: json.subtitle || "",
+            tasks: json.tasks,
+            motivation: json.motivation || "Молодец! ⭐"
+        };
+    } catch (e) {
+        console.error("❌ Парсинг:", e.message);
+        return null;
+    }
+}
+
+
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// APP.JS - ОСНОВНАЯ ЛОГИКА
+// ═══════════════════════════════════════════════════════
 // ═══════════════════════════════════════════════════════
 
 let currentWorksheet = null;
 let currentMode = "ai";
 
-
-// ═══════════════════════════════════════════════════════
-// ИНИЦИАЛИЗАЦИЯ
-// ═══════════════════════════════════════════════════════
-
 document.addEventListener("DOMContentLoaded", () => {
+    console.log("✅ DOM загружен");
     initModeButtons();
-    initPromptBuilder();
+    if (typeof initPromptBuilder === 'function') initPromptBuilder();
     initConstructor();
     initButtons();
     loadApiKey();
 });
-
-
-// ═══════════════════════════════════════════════════════
-// РЕЖИМЫ
-// ═══════════════════════════════════════════════════════
 
 function initModeButtons() {
     document.querySelectorAll(".mode-btn").forEach(btn => {
         btn.addEventListener("click", () => {
             document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
             btn.classList.add("active");
-            
             currentMode = btn.dataset.mode;
-            
-            document.getElementById("ai-mode").classList.toggle("hidden", currentMode !== "ai");
-            document.getElementById("constructor-mode").classList.toggle("hidden", currentMode !== "constructor");
-            document.getElementById("result-section").classList.add("hidden");
+            document.getElementById("ai-mode")?.classList.toggle("hidden", currentMode !== "ai");
+            document.getElementById("constructor-mode")?.classList.toggle("hidden", currentMode !== "constructor");
+            document.getElementById("result-section")?.classList.add("hidden");
         });
     });
 }
-
-
-// ═══════════════════════════════════════════════════════
-// КОНСТРУКТОР (РУЧНОЙ)
-// ═══════════════════════════════════════════════════════
 
 function initConstructor() {
     const slider = document.getElementById("tasks-count");
@@ -52,7 +226,6 @@ function initConstructor() {
             value.textContent = slider.value;
             renderTaskCards(parseInt(slider.value));
         });
-        
         renderTaskCards(3);
     }
 }
@@ -61,129 +234,78 @@ function renderTaskCards(count) {
     const container = document.getElementById("tasks-container");
     if (!container) return;
     
+    const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
+    const names = ["Разминка", "Тренировка", "Закрепление", "Сложное", "Мастер"];
+    const colors = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
+    
     container.innerHTML = "";
     
     for (let i = 0; i < count; i++) {
-        const color = LEVEL_COLORS[i % LEVEL_COLORS.length];
-        const icon = LEVEL_ICONS[i % LEVEL_ICONS.length];
-        const name = LEVEL_NAMES[i % LEVEL_NAMES.length];
-        
         container.innerHTML += `
-        <div class="task-card" style="border-left-color: ${color}">
-            <h4>${icon} Задание ${i + 1}</h4>
-            <div class="row">
-                <div class="input-group">
-                    <label>Название:</label>
-                    <input type="text" id="task-name-${i}" value="${name}">
-                </div>
-                <div class="input-group">
-                    <label>Инструкция:</label>
-                    <input type="text" id="task-instr-${i}" value="Выполни задание. Напиши ответ.">
-                </div>
+        <div class="task-card" style="border-left: 4px solid ${colors[i % 5]}">
+            <h4>${levels[i % 5]} Задание ${i + 1}</h4>
+            <div class="input-group">
+                <label>Название:</label>
+                <input type="text" id="task-name-${i}" value="${names[i % 5]}">
             </div>
             <div class="input-group">
-                <label>Описание/условие:</label>
-                <input type="text" id="task-content-${i}" placeholder="Например: Реши примеры">
+                <label>Инструкция:</label>
+                <input type="text" id="task-instr-${i}" value="Выполни задание.">
             </div>
-            <div class="row">
-                <div class="input-group">
-                    <label>Элементы (каждый с новой строки):</label>
-                    <textarea id="task-elem-${i}" rows="4">2+3=☐
-4+1=☐
-5+2=☐
-3+3=☐
-1+6=☐
-4+4=☐</textarea>
-                </div>
-                <div class="input-group">
-                    <label>Ответы (каждый с новой строки):</label>
-                    <textarea id="task-ans-${i}" rows="4">5
+            <div class="input-group">
+                <label>Элементы (по одному на строку):</label>
+                <textarea id="task-elem-${i}" rows="4">2+3=_
+4+1=_
+5+2=_</textarea>
+            </div>
+            <div class="input-group">
+                <label>Ответы (по одному на строку):</label>
+                <textarea id="task-ans-${i}" rows="4">5
 5
-7
-6
-7
-8</textarea>
-                </div>
+7</textarea>
             </div>
         </div>`;
     }
 }
 
-
-// ═══════════════════════════════════════════════════════
-// КНОПКИ
-// ═══════════════════════════════════════════════════════
-
 function initButtons() {
-    // Генерация AI
-    const generateBtn = document.getElementById("generate-btn");
-    if (generateBtn) {
-        generateBtn.addEventListener("click", generateWithAI);
-    }
+    document.getElementById("generate-btn")?.addEventListener("click", generateWithAI);
     
-    // Демо
-    const demoBtn = document.getElementById("demo-btn");
-    if (demoBtn) {
-        demoBtn.addEventListener("click", () => {
+    document.getElementById("demo-btn")?.addEventListener("click", () => {
+        if (typeof DEMO_WORKSHEET !== 'undefined') {
             currentWorksheet = DEMO_WORKSHEET;
             showResult();
-        });
-    }
+        }
+    });
     
-    // Создать из конструктора
-    const createBtn = document.getElementById("create-worksheet-btn");
-    if (createBtn) {
-        createBtn.addEventListener("click", createFromConstructor);
-    }
+    document.getElementById("create-worksheet-btn")?.addEventListener("click", createFromConstructor);
     
-    // Скачать рабочий лист
-    const downloadWorksheet = document.getElementById("download-worksheet");
-    if (downloadWorksheet) {
-        downloadWorksheet.addEventListener("click", () => {
-            if (currentWorksheet) {
-                const theme = document.getElementById("theme-select")?.value || "default";
-                const html = generateWorksheetHTML(currentWorksheet, theme);
-                downloadHTML(html, `worksheet_${Date.now()}.html`);
-            }
-        });
-    }
+    document.getElementById("download-worksheet")?.addEventListener("click", () => {
+        if (currentWorksheet && typeof generateWorksheetHTML === 'function') {
+            const theme = document.getElementById("theme-select")?.value || "default";
+            const html = generateWorksheetHTML(currentWorksheet, theme);
+            downloadHTML(html, `worksheet_${Date.now()}.html`);
+        }
+    });
     
-    // Скачать ответы
-    const downloadAnswers = document.getElementById("download-answers");
-    if (downloadAnswers) {
-        downloadAnswers.addEventListener("click", () => {
-            if (currentWorksheet) {
-                const html = generateAnswersHTML(currentWorksheet);
-                downloadHTML(html, `answers_${Date.now()}.html`);
-            }
-        });
-    }
+    document.getElementById("download-answers")?.addEventListener("click", () => {
+        if (currentWorksheet && typeof generateAnswersHTML === 'function') {
+            const html = generateAnswersHTML(currentWorksheet);
+            downloadHTML(html, `answers_${Date.now()}.html`);
+        }
+    });
     
-    // Кнопка "Назад"
-    const backBtn = document.getElementById("back-btn");
-    if (backBtn) {
-        backBtn.addEventListener("click", () => {
-            document.getElementById("result-section").classList.add("hidden");
-            currentWorksheet = null;
-        });
-    }
+    document.getElementById("back-btn")?.addEventListener("click", () => {
+        document.getElementById("result-section")?.classList.add("hidden");
+    });
     
-    // API ключ - сохранение при вводе
     const apiKeyInput = document.getElementById("api-key");
     if (apiKeyInput) {
         apiKeyInput.addEventListener("input", (e) => {
             localStorage.setItem("groq_api_key", e.target.value);
         });
-        apiKeyInput.addEventListener("change", (e) => {
-            localStorage.setItem("groq_api_key", e.target.value);
-        });
     }
 }
-
-
-// ═══════════════════════════════════════════════════════
-// API КЛЮЧ
-// ═══════════════════════════════════════════════════════
 
 function loadApiKey() {
     const saved = localStorage.getItem("groq_api_key");
@@ -193,34 +315,29 @@ function loadApiKey() {
     }
 }
 
-
-// ═══════════════════════════════════════════════════════
-// ГЕНЕРАЦИЯ ЧЕРЕЗ AI
-// ═══════════════════════════════════════════════════════
-
 async function generateWithAI() {
-    const apiKeyInput = document.getElementById("api-key");
-    const apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
+    const apiKey = document.getElementById("api-key")?.value?.trim();
     
-    // Получаем промпт из конструктора
-    const request = getBuiltPrompt();
+    // Получаем промпт
+    let request = "";
+    if (typeof getBuiltPrompt === 'function') {
+        request = getBuiltPrompt();
+    }
+    if (!request) {
+        request = document.getElementById("user-request")?.value?.trim() || "";
+    }
     
     if (!request) {
-        showError("Выбери хотя бы предмет!");
+        showError("Выбери тему или напиши запрос!");
         return;
     }
     
     if (!apiKey) {
-        showError("Введи API ключ Groq! Получить: console.groq.com/keys");
+        showError("Введи API ключ Groq!");
         return;
     }
     
-    if (!apiKey.startsWith("gsk_")) {
-        showError("Неверный формат ключа. Ключ должен начинаться с gsk_");
-        return;
-    }
-    
-    console.log("📝 Промпт:", request);
+    console.log("📝 Запрос:", request);
     
     showLoading(true);
     hideError();
@@ -235,40 +352,35 @@ async function generateWithAI() {
     }
 }
 
-
-// ═══════════════════════════════════════════════════════
-// СОЗДАНИЕ ИЗ КОНСТРУКТОРА
-// ═══════════════════════════════════════════════════════
-
 function createFromConstructor() {
     const title = document.getElementById("custom-title")?.value || "Мои задания";
-    const subtitle = document.getElementById("custom-subtitle")?.value || "Развивающие упражнения";
+    const subtitle = document.getElementById("custom-subtitle")?.value || "";
     const motivation = document.getElementById("custom-motivation")?.value || "Молодец! ⭐";
     const count = parseInt(document.getElementById("tasks-count")?.value || "3");
     
+    const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
     const tasks = [];
     
     for (let i = 0; i < count; i++) {
-        const elementsText = document.getElementById(`task-elem-${i}`)?.value || "";
-        const answersText = document.getElementById(`task-ans-${i}`)?.value || "";
+        const elements = (document.getElementById(`task-elem-${i}`)?.value || "")
+            .split("\n").map(e => e.trim()).filter(e => e);
+        const answers = (document.getElementById(`task-ans-${i}`)?.value || "")
+            .split("\n").map(a => a.trim()).filter(a => a);
         
-        const elements = elementsText.split("\n").map(e => e.trim()).filter(e => e);
-        const answers = answersText.split("\n").map(a => a.trim()).filter(a => a);
-        
-        tasks.push({
-            level: LEVEL_ICONS[i % LEVEL_ICONS.length],
-            level_name: document.getElementById(`task-name-${i}`)?.value || LEVEL_NAMES[i],
-            instruction: document.getElementById(`task-instr-${i}`)?.value || "Выполни задание",
-            content: document.getElementById(`task-content-${i}`)?.value || "",
-            elements: elements,
-            answers: answers
-        });
+        if (elements.length > 0) {
+            tasks.push({
+                level: levels[i % 5],
+                level_name: document.getElementById(`task-name-${i}`)?.value || `Задание ${i+1}`,
+                instruction: document.getElementById(`task-instr-${i}`)?.value || "Выполни задание.",
+                content: "",
+                elements,
+                answers
+            });
+        }
     }
     
-    // Проверка
-    const hasContent = tasks.some(t => t.elements.length > 0);
-    if (!hasContent) {
-        alert("Добавь хотя бы одно задание с элементами!");
+    if (tasks.length === 0) {
+        alert("Добавь хотя бы одно задание!");
         return;
     }
     
@@ -276,100 +388,67 @@ function createFromConstructor() {
     showResult();
 }
 
-
-// ═══════════════════════════════════════════════════════
-// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
-// ═══════════════════════════════════════════════════════
-
 function showResult() {
     if (!currentWorksheet) return;
     
-    // Показываем результат
-    const resultSection = document.getElementById("result-section");
-    if (resultSection) resultSection.classList.remove("hidden");
+    document.getElementById("result-section")?.classList.remove("hidden");
+    document.getElementById("result-title").textContent = currentWorksheet.title;
+    document.getElementById("result-subtitle").textContent = currentWorksheet.subtitle;
     
-    // Заполняем данные
-    const titleEl = document.getElementById("result-title");
-    const subtitleEl = document.getElementById("result-subtitle");
-    
-    if (titleEl) titleEl.textContent = currentWorksheet.title;
-    if (subtitleEl) subtitleEl.textContent = currentWorksheet.subtitle;
-    
-    // Статистика
     const tasks = currentWorksheet.tasks || [];
     const totalElements = tasks.reduce((sum, t) => sum + (t.elements?.length || 0), 0);
-    const themeName = document.getElementById("theme-select")?.value || "default";
-    const theme = THEMES?.[themeName] || { emoji: "🎯", name: "Стандартная" };
     
-    const statTasks = document.getElementById("stat-tasks");
-    const statElements = document.getElementById("stat-elements");
-    const statTheme = document.getElementById("stat-theme");
+    document.getElementById("stat-tasks").textContent = tasks.length;
+    document.getElementById("stat-elements").textContent = totalElements;
     
-    if (statTasks) statTasks.textContent = tasks.length;
-    if (statElements) statElements.textContent = totalElements;
-    if (statTheme) statTheme.textContent = theme.emoji + " " + theme.name;
-    
-    // Предпросмотр заданий
     const preview = document.getElementById("tasks-preview");
     if (preview) {
         preview.innerHTML = tasks.map((task, i) => {
-            const color = LEVEL_COLORS[i % LEVEL_COLORS.length];
-            const elementsHTML = (task.elements || []).slice(0, 6).map(el => 
-                `<span class="element-chip">${el}</span>`
-            ).join("");
-            
-            const moreCount = (task.elements?.length || 0) - 6;
-            const moreHTML = moreCount > 0 ? `<span class="element-chip more">+${moreCount}</span>` : '';
+            const colors = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
+            const elementsHtml = (task.elements || []).slice(0, 6)
+                .map(el => `<span class="element-chip">${el}</span>`).join("");
             
             return `
-            <div class="task-preview" style="border-left-color: ${color}">
+            <div class="task-preview" style="border-left: 4px solid ${colors[i % 5]}">
                 <h4>${task.level} ${task.level_name}</h4>
-                <div class="instruction">📝 ${task.instruction}</div>
+                <p class="instruction">📝 ${task.instruction}</p>
                 ${task.content ? `<p>${task.content}</p>` : ''}
-                <div class="elements">${elementsHTML}${moreHTML}</div>
+                <div class="elements">${elementsHtml}</div>
             </div>`;
         }).join("");
     }
     
-    // Мотивация
-    const motivationBox = document.getElementById("motivation-box");
-    if (motivationBox) {
-        motivationBox.textContent = "🎉 " + currentWorksheet.motivation;
-    }
-    
-    // Прокручиваем к результату
-    resultSection?.scrollIntoView({ behavior: "smooth" });
+    document.getElementById("motivation-box").textContent = "🎉 " + currentWorksheet.motivation;
+    document.getElementById("result-section")?.scrollIntoView({ behavior: "smooth" });
 }
 
-
-// ═══════════════════════════════════════════════════════
-// ЗАГРУЗКА И ОШИБКИ
-// ═══════════════════════════════════════════════════════
-
 function showLoading(show) {
-    const loading = document.getElementById("loading");
-    const generateBtn = document.getElementById("generate-btn");
-    
-    if (loading) {
-        loading.classList.toggle("hidden", !show);
-    }
-    if (generateBtn) {
-        generateBtn.disabled = show;
-        generateBtn.textContent = show ? "⏳ Генерация..." : "✨ Создать задания";
+    document.getElementById("loading")?.classList.toggle("hidden", !show);
+    const btn = document.getElementById("generate-btn");
+    if (btn) {
+        btn.disabled = show;
+        btn.textContent = show ? "⏳ Генерация..." : "✨ Создать задания";
     }
 }
 
 function showError(message) {
-    const errorEl = document.getElementById("error-message");
-    if (errorEl) {
-        errorEl.textContent = "❌ " + message;
-        errorEl.classList.remove("hidden");
+    const el = document.getElementById("error-message");
+    if (el) {
+        el.textContent = "❌ " + message;
+        el.classList.remove("hidden");
     }
 }
 
 function hideError() {
-    const errorEl = document.getElementById("error-message");
-    if (errorEl) {
-        errorEl.classList.add("hidden");
-    }
+    document.getElementById("error-message")?.classList.add("hidden");
+}
+
+function downloadHTML(content, filename) {
+    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
 }
