@@ -10,14 +10,14 @@
 var STATIC_BASE_URL = "";
 
 var PRINT_THEMES = {
-    default: { bg: "#f8f9fa", accent: "#7c3aed", emoji: "⭐🌟✨💫" },
-    pirates: { bg: "#fff8e1", accent: "#5d4037", emoji: "🏴‍☠️⚓🦜💰" },
-    space: { bg: "#e8eaf6", accent: "#3f51b5", emoji: "🚀🌟👨‍🚀🛸" },
-    animals: { bg: "#e8f5e9", accent: "#388e3c", emoji: "🦁🐘🦒🐵" },
-    sweets: { bg: "#fce4ec", accent: "#e91e63", emoji: "🍭🍬🧁🍩" },
-    dinosaurs: { bg: "#efebe9", accent: "#6d4c41", emoji: "🦖🦕🌋🥚" },
-    fairytale: { bg: "#f3e5f5", accent: "#9c27b0", emoji: "🏰👸🐉✨" },
-    mouse: { bg: "#eff6ff", accent: "#3b82f6", emoji: "🐭🧀⭐🎈" }
+    default:  { bg: "#f8f9fa", accent: "#7c3aed", emoji: "⭐🌟✨💫" },
+    pirates:  { bg: "#fff8e1", accent: "#5d4037", emoji: "🏴‍☠️⚓🦜💰" },
+    space:    { bg: "#e8eaf6", accent: "#3f51b5", emoji: "🚀🌟👨‍🚀🛸" },
+    animals:  { bg: "#e8f5e9", accent: "#388e3c", emoji: "🦁🐘🦒🐵" },
+    sweets:   { bg: "#fce4ec", accent: "#e91e63", emoji: "🍭🍬🧁🍩" },
+    dinosaurs:{ bg: "#efebe9", accent: "#6d4c41", emoji: "🦖🦕🌋🥚" },
+    fairytale:{ bg: "#f3e5f5", accent: "#9c27b0", emoji: "🏰👸🐉✨" },
+    mouse:    { bg: "#eff6ff", accent: "#3b82f6", emoji: "🐭🧀⭐🎈" }
 };
 
 function getThemeStyles(themeName) {
@@ -30,24 +30,19 @@ function getMascotUrl(themeKey) {
     var base = (typeof STATIC_BASE_URL === "string" ? STATIC_BASE_URL : "").trim();
 
     if (base) {
-        // Удаляем возможный завершающий слэш
         base = base.replace(/\/$/, "");
         return base + "/img/themes/" + themeKey + "/mascot.svg";
     }
 
-    // Если сайт открыт по http/https — строим URL от текущего домена
     if (typeof window !== "undefined" &&
         window.location &&
         window.location.protocol.indexOf("http") === 0) {
 
-        var origin = window.location.origin; // https://домен
-        // Берём путь до каталога приложения (без последнего сегмента)
+        var origin = window.location.origin;
         var path = window.location.pathname.split("/").slice(0, -1).join("/");
-        // Пример: /super-teacher -> https://.../super-teacher/img/...
         return origin + path + "/img/themes/" + themeKey + "/mascot.svg";
     }
 
-    // Фолбэк — относительный путь
     return "img/themes/" + themeKey + "/mascot.svg";
 }
 
@@ -66,8 +61,8 @@ function generateWorksheetHTML(data, themeName) {
     html += '* { box-sizing: border-box; margin: 0; padding: 0; }';
     html += 'body { font-family: Comfortaa, sans-serif; margin: 0; padding: 0; background: #eee; }';
     
-    // Кнопка печати (скрывается при печати)
-    html += '.print-btn-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }';
+    // Кнопки печати: НИЗ ПРАВО
+    html += '.print-btn-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }';
     html += '.print-btn { padding: 15px 30px; font-size: 18px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; font-family: Comfortaa, sans-serif; transition: transform 0.2s, box-shadow 0.2s; }';
     html += '.print-btn:hover { transform: scale(1.05); }';
     html += '.print-btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4); }';
@@ -76,14 +71,14 @@ function generateWorksheetHTML(data, themeName) {
     // Страница A4
     html += '.page { ';
     html += '  width: 210mm; ';
-    html += '  height: 297mm; '; // Фиксированная высота!
+    html += '  height: 297mm; ';
     html += '  padding: 12mm 15mm; ';
     html += '  margin: 10px auto; ';
     html += '  background: ' + theme.bg + '; ';
     html += '  box-shadow: 0 2px 10px rgba(0,0,0,0.1); ';
     html += '  page-break-after: always; ';
     html += '  page-break-inside: avoid; ';
-    html += '  overflow: hidden; '; // Обрезаем лишнее
+    html += '  overflow: hidden; ';
     html += '  display: flex; ';
     html += '  flex-direction: column; ';
     html += '}';
@@ -112,10 +107,9 @@ function generateWorksheetHTML(data, themeName) {
     html += '.elements { margin-bottom: 12px; flex-shrink: 0; }';
     html += '.element { background: white; padding: 8px 12px; margin-bottom: 6px; border-radius: 8px; font-size: 15px; border: 1px solid #e0e0e0; }';
     
-    // Место для работы (занимает оставшееся место)
+    // Место для работы
     html += '.work-area { border: 2px dashed #ccc; border-radius: 10px; padding: 15px; flex: 1; min-height: 80px; display: flex; flex-direction: column; }';
     html += '.work-area-title { font-size: 12px; color: #888; margin-bottom: 8px; }';
-    html += '.work-area-hint { color: #bbb; font-size: 13px; }';
     html += '.work-lines { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }';
     html += '.work-line { border-bottom: 1px solid #ddd; height: 25px; }';
     
@@ -145,7 +139,7 @@ function generateWorksheetHTML(data, themeName) {
     html += '<button class="print-btn print-btn-secondary" onclick="window.close()">✕ Закрыть</button>';
     html += '</div>';
     
-    // Генерируем страницы
+    // Страницы
     for (var i = 0; i < tasks.length; i++) {
         var task = tasks[i];
         var levelEmoji = theme.emoji.charAt(i % theme.emoji.length) || "⭐";
@@ -178,7 +172,7 @@ function generateWorksheetHTML(data, themeName) {
         }
         html += '</div>';
         
-        // Элементы задания
+        // Элементы
         if (task.elements && task.elements.length > 0) {
             html += '<div class="elements">';
             for (var j = 0; j < task.elements.length; j++) {
@@ -187,11 +181,10 @@ function generateWorksheetHTML(data, themeName) {
             html += '</div>';
         }
         
-        // Место для работы с линиями
+        // Рабочая зона
         html += '<div class="work-area">';
         html += '<div class="work-area-title">✏️ Место для решения:</div>';
         html += '<div class="work-lines">';
-        // Добавляем линии для письма
         for (var k = 0; k < 6; k++) {
             html += '<div class="work-line"></div>';
         }
@@ -209,7 +202,7 @@ function generateWorksheetHTML(data, themeName) {
         html += '</div>';
         
         html += '<div class="page-num"><span class="theme-icons">' + theme.emoji + '</span>Страница ' + (i + 1) + ' из ' + totalPages + '</div>';
-        html += '</div>'; // end page
+        html += '</div>';
     }
     
     html += '</body></html>';
@@ -226,8 +219,8 @@ function generateAnswersHTML(data) {
     html += '* { box-sizing: border-box; }';
     html += 'body { font-family: Comfortaa, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; background: #f5f5f5; }';
     
-    // Кнопка печати
-    html += '.print-btn-container { position: fixed; top: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }';
+    // Кнопки печати: НИЗ ПРАВО
+    html += '.print-btn-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }';
     html += '.print-btn { padding: 12px 25px; font-size: 16px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; font-family: Comfortaa, sans-serif; transition: transform 0.2s; }';
     html += '.print-btn:hover { transform: scale(1.05); }';
     html += '.print-btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; }';
@@ -245,7 +238,7 @@ function generateAnswersHTML(data) {
     html += '.answer-text { color: #333; }';
     html += '.no-answers { color: #999; font-style: italic; padding: 10px; }';
     
-    // Стили для печати
+    // Печать
     html += '@media print { ';
     html += '  body { background: white; padding: 10px; }';
     html += '  .print-btn-container { display: none !important; }';
@@ -289,7 +282,7 @@ function generateAnswersHTML(data) {
         html += '</div>';
     }
     
-    html += '</div>'; // container
+    html += '</div>';
     html += '</body></html>';
     return html;
 }
