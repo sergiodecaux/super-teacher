@@ -1,228 +1,62 @@
 // ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// AI.JS - РАБОТА С API
-// ═══════════════════════════════════════════════════════
+// СОСТОЯНИЕ
 // ═══════════════════════════════════════════════════════
 
-const API_URL = "/api/groq";
-const MODELS = ["llama-3.1-70b-versatile", "llama-3.1-8b-instant"];
-const TEMPERATURE = 0.3;
+var currentWorksheet = null;
+var currentMode = "ai";
 
-const SYSTEM_PROMPT = `Ты генератор учебных карточек для начальной школы России.
-Возвращай ТОЛЬКО JSON. Никакого текста до или после JSON.`;
 
-const TEMPLATES = {
-    "окончан": {
-        title: "📝 Окончания существительных",
-        subtitle: "Русский язык, 3-4 класс"
-    },
-    "склонен": {
-        title: "📚 Склонение существительных", 
-        subtitle: "Русский язык, 3-4 класс"
-    },
-    "падеж": {
-        title: "📖 Падежи существительных",
-        subtitle: "Русский язык, 3-4 класс"
-    },
-    "спряжен": {
-        title: "🔤 Спряжение глаголов",
-        subtitle: "Русский язык, 4 класс"
-    },
-    "математ": {
-        title: "🧮 Математика",
-        subtitle: "Примеры и задачи"
-    }
-};
+// ═══════════════════════════════════════════════════════
+// ИНИЦИАЛИЗАЦИЯ
+// ═══════════════════════════════════════════════════════
 
-function buildPrompt(userRequest) {
-    const requestLower = userRequest.toLowerCase();
+document.addEventListener("DOMContentLoaded", function() {
+    console.log("✅ Страница загружена");
+    console.log("📦 callGroqAI:", typeof callGroqAI);
     
-    let template = { title: "📝 Рабочий лист", subtitle: "" };
-    for (const [key, tmpl] of Object.entries(TEMPLATES)) {
-        if (new RegExp(key, 'i').test(requestLower)) {
-            template = tmpl;
-            break;
-        }
-    }
-
-    return `Создай 5 учебных карточек.
-
-ТЕМА: ${userRequest}
-НАЗВАНИЕ: ${template.title}
-
-Каждая карточка должна содержать:
-- level: "⭐" до "⭐⭐⭐⭐⭐"
-- level_name: название задания
-- instruction: что делать ученику
-- elements: массив из 6-8 заданий с пропусками (_) или вопросами (?)
-- answers: массив правильных ответов
-
-ПРИМЕР ПРАВИЛЬНОГО ЗАДАНИЯ:
-{
-  "level": "⭐",
-  "level_name": "Вставь окончание",
-  "instruction": "Вставь пропущенное окончание существительного.",
-  "content": "",
-  "elements": [
-    "на парт_ (на чём?)",
-    "у дорог_ (у чего?)",
-    "к бабушк_ (к кому?)",
-    "в тетрад_ (в чём?)",
-    "без сол_ (без чего?)",
-    "о мам_ (о ком?)"
-  ],
-  "answers": [
-    "на партЕ (1 скл., П.п.)",
-    "у дорогИ (1 скл., Р.п.)",
-    "к бабушкЕ (1 скл., Д.п.)",
-    "в тетрадИ (3 скл., П.п.)",
-    "без солИ (3 скл., Р.п.)",
-    "о мамЕ (1 скл., П.п.)"
-  ]
-}
-
-ВАЖНО:
-- elements — это ЗАДАНИЯ с пропусками, НЕ готовые ответы!
-- Пропуски обозначай символом _
-- В каждом задании 6-8 элементов
-
-ВЕРНИ ТОЛЬКО JSON:
-{
-  "title": "${template.title}",
-  "subtitle": "${template.subtitle}",
-  "tasks": [...5 заданий...],
-  "motivation": "Молодец! ⭐"
-}`;
-}
-
-async function callGroqAI(userRequest, apiKey) {
-    console.log("🚀 callGroqAI:", userRequest);
-    
-    for (const model of MODELS) {
-        try {
-            console.log(`🔄 Модель: ${model}`);
-            
-            const response = await fetch(API_URL, {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: "system", content: SYSTEM_PROMPT },
-                        { role: "user", content: buildPrompt(userRequest) }
-                    ],
-                    max_tokens: 4000,
-                    temperature: TEMPERATURE
-                })
-            });
-            
-            if (response.status === 429) {
-                console.log("⚠️ Лимит, ждём...");
-                await new Promise(r => setTimeout(r, 1000));
-                continue;
-            }
-            
-            if (!response.ok) {
-                const err = await response.json().catch(() => ({}));
-                throw new Error(err.error?.message || `HTTP ${response.status}`);
-            }
-            
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content;
-            
-            if (!text) continue;
-            
-            console.log("📄 Ответ:", text.substring(0, 200));
-            
-            const worksheet = parseWorksheet(text);
-            if (worksheet) return worksheet;
-            
-        } catch (error) {
-            console.error(`❌ ${model}:`, error.message);
-            continue;
-        }
-    }
-    
-    throw new Error("Ошибка генерации. Попробуй ещё раз.");
-}
-
-function parseWorksheet(text) {
-    text = text.replace(/```json\s*/gi, "").replace(/```\s*/gi, "").trim();
-    
-    const match = text.match(/\{[\s\S]*\}/);
-    if (!match) return null;
-    
-    try {
-        const json = JSON.parse(
-            match[0].replace(/,\s*}/g, "}").replace(/,\s*]/g, "]")
-        );
-        
-        if (!json.tasks?.length) return null;
-        
-        const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
-        
-        json.tasks = json.tasks.map((task, i) => ({
-            level: task.level || levels[i],
-            level_name: task.level_name || `Задание ${i+1}`,
-            instruction: task.instruction || "Выполни задание.",
-            content: task.content || "",
-            elements: Array.isArray(task.elements) ? task.elements.filter(x => x) : [],
-            answers: Array.isArray(task.answers) ? task.answers.filter(x => x) : []
-        })).filter(t => t.elements.length > 0 || t.content);
-        
-        return {
-            title: json.title || "Рабочий лист",
-            subtitle: json.subtitle || "",
-            tasks: json.tasks,
-            motivation: json.motivation || "Молодец! ⭐"
-        };
-    } catch (e) {
-        console.error("❌ Парсинг:", e.message);
-        return null;
-    }
-}
-
-
-// ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-// APP.JS - ОСНОВНАЯ ЛОГИКА
-// ═══════════════════════════════════════════════════════
-// ═══════════════════════════════════════════════════════
-
-let currentWorksheet = null;
-let currentMode = "ai";
-
-document.addEventListener("DOMContentLoaded", () => {
-    console.log("✅ DOM загружен");
     initModeButtons();
-    if (typeof initPromptBuilder === 'function') initPromptBuilder();
+    initPromptBuilder();
     initConstructor();
     initButtons();
     loadApiKey();
 });
 
+
+// ═══════════════════════════════════════════════════════
+// РЕЖИМЫ
+// ═══════════════════════════════════════════════════════
+
 function initModeButtons() {
-    document.querySelectorAll(".mode-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".mode-btn").forEach(b => b.classList.remove("active"));
+    var buttons = document.querySelectorAll(".mode-btn");
+    buttons.forEach(function(btn) {
+        btn.addEventListener("click", function() {
+            buttons.forEach(function(b) { b.classList.remove("active"); });
             btn.classList.add("active");
+            
             currentMode = btn.dataset.mode;
-            document.getElementById("ai-mode")?.classList.toggle("hidden", currentMode !== "ai");
-            document.getElementById("constructor-mode")?.classList.toggle("hidden", currentMode !== "constructor");
-            document.getElementById("result-section")?.classList.add("hidden");
+            
+            var aiMode = document.getElementById("ai-mode");
+            var constructorMode = document.getElementById("constructor-mode");
+            var resultSection = document.getElementById("result-section");
+            
+            if (aiMode) aiMode.classList.toggle("hidden", currentMode !== "ai");
+            if (constructorMode) constructorMode.classList.toggle("hidden", currentMode !== "constructor");
+            if (resultSection) resultSection.classList.add("hidden");
         });
     });
 }
 
+
+// ═══════════════════════════════════════════════════════
+// КОНСТРУКТОР
+// ═══════════════════════════════════════════════════════
+
 function initConstructor() {
-    const slider = document.getElementById("tasks-count");
-    const value = document.getElementById("tasks-count-value");
+    var slider = document.getElementById("tasks-count");
+    var value = document.getElementById("tasks-count-value");
     
     if (slider && value) {
-        slider.addEventListener("input", () => {
+        slider.addEventListener("input", function() {
             value.textContent = slider.value;
             renderTaskCards(parseInt(slider.value));
         });
@@ -231,104 +65,132 @@ function initConstructor() {
 }
 
 function renderTaskCards(count) {
-    const container = document.getElementById("tasks-container");
+    var container = document.getElementById("tasks-container");
     if (!container) return;
-    
-    const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
-    const names = ["Разминка", "Тренировка", "Закрепление", "Сложное", "Мастер"];
-    const colors = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
     
     container.innerHTML = "";
     
-    for (let i = 0; i < count; i++) {
-        container.innerHTML += `
-        <div class="task-card" style="border-left: 4px solid ${colors[i % 5]}">
-            <h4>${levels[i % 5]} Задание ${i + 1}</h4>
-            <div class="input-group">
-                <label>Название:</label>
-                <input type="text" id="task-name-${i}" value="${names[i % 5]}">
-            </div>
-            <div class="input-group">
-                <label>Инструкция:</label>
-                <input type="text" id="task-instr-${i}" value="Выполни задание.">
-            </div>
-            <div class="input-group">
-                <label>Элементы (по одному на строку):</label>
-                <textarea id="task-elem-${i}" rows="4">2+3=_
-4+1=_
-5+2=_</textarea>
-            </div>
-            <div class="input-group">
-                <label>Ответы (по одному на строку):</label>
-                <textarea id="task-ans-${i}" rows="4">5
-5
-7</textarea>
-            </div>
-        </div>`;
+    for (var i = 0; i < count; i++) {
+        var color = LEVEL_COLORS[i % LEVEL_COLORS.length];
+        var icon = LEVEL_ICONS[i % LEVEL_ICONS.length];
+        var name = LEVEL_NAMES[i % LEVEL_NAMES.length];
+        
+        container.innerHTML += 
+            '<div class="task-card" style="border-left: 4px solid ' + color + '">' +
+                '<h4>' + icon + ' Задание ' + (i + 1) + '</h4>' +
+                '<div class="input-group">' +
+                    '<label>Название:</label>' +
+                    '<input type="text" id="task-name-' + i + '" value="' + name + '">' +
+                '</div>' +
+                '<div class="input-group">' +
+                    '<label>Инструкция:</label>' +
+                    '<input type="text" id="task-instr-' + i + '" value="Выполни задание.">' +
+                '</div>' +
+                '<div class="input-group">' +
+                    '<label>Элементы (по одному на строку):</label>' +
+                    '<textarea id="task-elem-' + i + '" rows="4">2 + 3 = __\n4 + 1 = __\n5 + 2 = __</textarea>' +
+                '</div>' +
+                '<div class="input-group">' +
+                    '<label>Ответы (по одному на строку):</label>' +
+                    '<textarea id="task-ans-' + i + '" rows="4">5\n5\n7</textarea>' +
+                '</div>' +
+            '</div>';
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// КНОПКИ
+// ═══════════════════════════════════════════════════════
+
 function initButtons() {
-    document.getElementById("generate-btn")?.addEventListener("click", generateWithAI);
+    var generateBtn = document.getElementById("generate-btn");
+    var demoBtn = document.getElementById("demo-btn");
+    var createBtn = document.getElementById("create-worksheet-btn");
+    var downloadWorksheetBtn = document.getElementById("download-worksheet");
+    var downloadAnswersBtn = document.getElementById("download-answers");
+    var backBtn = document.getElementById("back-btn");
+    var apiKeyInput = document.getElementById("api-key");
     
-    document.getElementById("demo-btn")?.addEventListener("click", () => {
-        if (typeof DEMO_WORKSHEET !== 'undefined') {
+    if (generateBtn) {
+        generateBtn.addEventListener("click", generateWithAI);
+    }
+    
+    if (demoBtn) {
+        demoBtn.addEventListener("click", function() {
             currentWorksheet = DEMO_WORKSHEET;
             showResult();
-        }
-    });
+        });
+    }
     
-    document.getElementById("create-worksheet-btn")?.addEventListener("click", createFromConstructor);
+    if (createBtn) {
+        createBtn.addEventListener("click", createFromConstructor);
+    }
     
-    document.getElementById("download-worksheet")?.addEventListener("click", () => {
-        if (currentWorksheet && typeof generateWorksheetHTML === 'function') {
-            const theme = document.getElementById("theme-select")?.value || "default";
-            const html = generateWorksheetHTML(currentWorksheet, theme);
-            downloadHTML(html, `worksheet_${Date.now()}.html`);
-        }
-    });
+    if (downloadWorksheetBtn) {
+        downloadWorksheetBtn.addEventListener("click", function() {
+            if (currentWorksheet && typeof generateWorksheetHTML === "function") {
+                var theme = document.getElementById("theme-select");
+                var themeValue = theme ? theme.value : "default";
+                var html = generateWorksheetHTML(currentWorksheet, themeValue);
+                downloadHTML(html, "worksheet_" + Date.now() + ".html");
+            }
+        });
+    }
     
-    document.getElementById("download-answers")?.addEventListener("click", () => {
-        if (currentWorksheet && typeof generateAnswersHTML === 'function') {
-            const html = generateAnswersHTML(currentWorksheet);
-            downloadHTML(html, `answers_${Date.now()}.html`);
-        }
-    });
+    if (downloadAnswersBtn) {
+        downloadAnswersBtn.addEventListener("click", function() {
+            if (currentWorksheet && typeof generateAnswersHTML === "function") {
+                var html = generateAnswersHTML(currentWorksheet);
+                downloadHTML(html, "answers_" + Date.now() + ".html");
+            }
+        });
+    }
     
-    document.getElementById("back-btn")?.addEventListener("click", () => {
-        document.getElementById("result-section")?.classList.add("hidden");
-    });
+    if (backBtn) {
+        backBtn.addEventListener("click", function() {
+            var resultSection = document.getElementById("result-section");
+            if (resultSection) resultSection.classList.add("hidden");
+        });
+    }
     
-    const apiKeyInput = document.getElementById("api-key");
     if (apiKeyInput) {
-        apiKeyInput.addEventListener("input", (e) => {
+        apiKeyInput.addEventListener("input", function(e) {
             localStorage.setItem("groq_api_key", e.target.value);
         });
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// API КЛЮЧ
+// ═══════════════════════════════════════════════════════
+
 function loadApiKey() {
-    const saved = localStorage.getItem("groq_api_key");
+    var saved = localStorage.getItem("groq_api_key");
     if (saved) {
-        const input = document.getElementById("api-key");
+        var input = document.getElementById("api-key");
         if (input) input.value = saved;
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// ГЕНЕРАЦИЯ AI
+// ═══════════════════════════════════════════════════════
+
 async function generateWithAI() {
-    const apiKey = document.getElementById("api-key")?.value?.trim();
+    var apiKeyInput = document.getElementById("api-key");
+    var apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
     
     // Получаем промпт
-    let request = "";
-    if (typeof getBuiltPrompt === 'function') {
+    var request = "";
+    if (typeof getBuiltPrompt === "function") {
         request = getBuiltPrompt();
-    }
-    if (!request) {
-        request = document.getElementById("user-request")?.value?.trim() || "";
     }
     
     if (!request) {
-        showError("Выбери тему или напиши запрос!");
+        showError("Выбери тему!");
         return;
     }
     
@@ -337,7 +199,7 @@ async function generateWithAI() {
         return;
     }
     
-    console.log("📝 Запрос:", request);
+    console.log("📝 Промпт:", request);
     
     showLoading(true);
     hideError();
@@ -352,29 +214,44 @@ async function generateWithAI() {
     }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// СОЗДАНИЕ ИЗ КОНСТРУКТОРА
+// ═══════════════════════════════════════════════════════
+
 function createFromConstructor() {
-    const title = document.getElementById("custom-title")?.value || "Мои задания";
-    const subtitle = document.getElementById("custom-subtitle")?.value || "";
-    const motivation = document.getElementById("custom-motivation")?.value || "Молодец! ⭐";
-    const count = parseInt(document.getElementById("tasks-count")?.value || "3");
+    var titleInput = document.getElementById("custom-title");
+    var subtitleInput = document.getElementById("custom-subtitle");
+    var motivationInput = document.getElementById("custom-motivation");
+    var countInput = document.getElementById("tasks-count");
     
-    const levels = ["⭐", "⭐⭐", "⭐⭐⭐", "⭐⭐⭐⭐", "⭐⭐⭐⭐⭐"];
-    const tasks = [];
+    var title = titleInput ? titleInput.value : "Мои задания";
+    var subtitle = subtitleInput ? subtitleInput.value : "";
+    var motivation = motivationInput ? motivationInput.value : "Молодец! ⭐";
+    var count = countInput ? parseInt(countInput.value) : 3;
     
-    for (let i = 0; i < count; i++) {
-        const elements = (document.getElementById(`task-elem-${i}`)?.value || "")
-            .split("\n").map(e => e.trim()).filter(e => e);
-        const answers = (document.getElementById(`task-ans-${i}`)?.value || "")
-            .split("\n").map(a => a.trim()).filter(a => a);
+    var tasks = [];
+    
+    for (var i = 0; i < count; i++) {
+        var elemInput = document.getElementById("task-elem-" + i);
+        var ansInput = document.getElementById("task-ans-" + i);
+        var nameInput = document.getElementById("task-name-" + i);
+        var instrInput = document.getElementById("task-instr-" + i);
+        
+        var elemText = elemInput ? elemInput.value : "";
+        var ansText = ansInput ? ansInput.value : "";
+        
+        var elements = elemText.split("\n").map(function(e) { return e.trim(); }).filter(function(e) { return e; });
+        var answers = ansText.split("\n").map(function(a) { return a.trim(); }).filter(function(a) { return a; });
         
         if (elements.length > 0) {
             tasks.push({
-                level: levels[i % 5],
-                level_name: document.getElementById(`task-name-${i}`)?.value || `Задание ${i+1}`,
-                instruction: document.getElementById(`task-instr-${i}`)?.value || "Выполни задание.",
+                level: LEVEL_ICONS[i % LEVEL_ICONS.length],
+                level_name: nameInput ? nameInput.value : LEVEL_NAMES[i % LEVEL_NAMES.length],
+                instruction: instrInput ? instrInput.value : "Выполни задание.",
                 content: "",
-                elements,
-                answers
+                elements: elements,
+                answers: answers
             });
         }
     }
@@ -384,71 +261,132 @@ function createFromConstructor() {
         return;
     }
     
-    currentWorksheet = { title, subtitle, tasks, motivation };
+    currentWorksheet = {
+        title: title,
+        subtitle: subtitle,
+        tasks: tasks,
+        motivation: motivation
+    };
+    
     showResult();
 }
+
+
+// ═══════════════════════════════════════════════════════
+// ОТОБРАЖЕНИЕ РЕЗУЛЬТАТА
+// ═══════════════════════════════════════════════════════
 
 function showResult() {
     if (!currentWorksheet) return;
     
-    document.getElementById("result-section")?.classList.remove("hidden");
-    document.getElementById("result-title").textContent = currentWorksheet.title;
-    document.getElementById("result-subtitle").textContent = currentWorksheet.subtitle;
+    var resultSection = document.getElementById("result-section");
+    var resultTitle = document.getElementById("result-title");
+    var resultSubtitle = document.getElementById("result-subtitle");
+    var statTasks = document.getElementById("stat-tasks");
+    var statElements = document.getElementById("stat-elements");
+    var statTheme = document.getElementById("stat-theme");
+    var preview = document.getElementById("tasks-preview");
+    var motivationBox = document.getElementById("motivation-box");
     
-    const tasks = currentWorksheet.tasks || [];
-    const totalElements = tasks.reduce((sum, t) => sum + (t.elements?.length || 0), 0);
+    if (resultSection) resultSection.classList.remove("hidden");
+    if (resultTitle) resultTitle.textContent = currentWorksheet.title;
+    if (resultSubtitle) resultSubtitle.textContent = currentWorksheet.subtitle;
     
-    document.getElementById("stat-tasks").textContent = tasks.length;
-    document.getElementById("stat-elements").textContent = totalElements;
-    
-    const preview = document.getElementById("tasks-preview");
-    if (preview) {
-        preview.innerHTML = tasks.map((task, i) => {
-            const colors = ["#4CAF50", "#8BC34A", "#FFC107", "#FF9800", "#f44336"];
-            const elementsHtml = (task.elements || []).slice(0, 6)
-                .map(el => `<span class="element-chip">${el}</span>`).join("");
-            
-            return `
-            <div class="task-preview" style="border-left: 4px solid ${colors[i % 5]}">
-                <h4>${task.level} ${task.level_name}</h4>
-                <p class="instruction">📝 ${task.instruction}</p>
-                ${task.content ? `<p>${task.content}</p>` : ''}
-                <div class="elements">${elementsHtml}</div>
-            </div>`;
-        }).join("");
+    var tasks = currentWorksheet.tasks || [];
+    var totalElements = 0;
+    for (var i = 0; i < tasks.length; i++) {
+        totalElements += (tasks[i].elements ? tasks[i].elements.length : 0);
     }
     
-    document.getElementById("motivation-box").textContent = "🎉 " + currentWorksheet.motivation;
-    document.getElementById("result-section")?.scrollIntoView({ behavior: "smooth" });
+    if (statTasks) statTasks.textContent = tasks.length;
+    if (statElements) statElements.textContent = totalElements;
+    
+    var themeSelect = document.getElementById("theme-select");
+    var themeName = themeSelect ? themeSelect.value : "default";
+    var theme = THEMES[themeName] || THEMES.default;
+    if (statTheme) statTheme.textContent = theme.emoji + " " + theme.name;
+    
+    if (preview) {
+        var html = "";
+        for (var j = 0; j < tasks.length; j++) {
+            var task = tasks[j];
+            var color = LEVEL_COLORS[j % LEVEL_COLORS.length];
+            
+            var elementsHtml = "";
+            var elems = task.elements || [];
+            for (var k = 0; k < Math.min(elems.length, 6); k++) {
+                elementsHtml += '<span class="element-chip">' + elems[k] + '</span>';
+            }
+            if (elems.length > 6) {
+                elementsHtml += '<span class="element-chip more">+' + (elems.length - 6) + '</span>';
+            }
+            
+            html += 
+                '<div class="task-preview" style="border-left: 4px solid ' + color + '">' +
+                    '<h4>' + task.level + ' ' + task.level_name + '</h4>' +
+                    '<div class="instruction">📝 ' + task.instruction + '</div>' +
+                    (task.content ? '<p>' + task.content + '</p>' : '') +
+                    '<div class="elements">' + elementsHtml + '</div>' +
+                '</div>';
+        }
+        preview.innerHTML = html;
+    }
+    
+    if (motivationBox) {
+        motivationBox.textContent = "🎉 " + currentWorksheet.motivation;
+    }
+    
+    if (resultSection) {
+        resultSection.scrollIntoView({ behavior: "smooth" });
+    }
 }
 
+
+// ═══════════════════════════════════════════════════════
+// ЗАГРУЗКА И ОШИБКИ
+// ═══════════════════════════════════════════════════════
+
 function showLoading(show) {
-    document.getElementById("loading")?.classList.toggle("hidden", !show);
-    const btn = document.getElementById("generate-btn");
-    if (btn) {
-        btn.disabled = show;
-        btn.textContent = show ? "⏳ Генерация..." : "✨ Создать задания";
+    var loading = document.getElementById("loading");
+    var generateBtn = document.getElementById("generate-btn");
+    
+    if (loading) {
+        if (show) {
+            loading.classList.remove("hidden");
+        } else {
+            loading.classList.add("hidden");
+        }
+    }
+    
+    if (generateBtn) {
+        generateBtn.disabled = show;
+        generateBtn.textContent = show ? "⏳ Генерация..." : "✨ Создать задания";
     }
 }
 
 function showError(message) {
-    const el = document.getElementById("error-message");
-    if (el) {
-        el.textContent = "❌ " + message;
-        el.classList.remove("hidden");
+    var errorEl = document.getElementById("error-message");
+    if (errorEl) {
+        errorEl.textContent = "❌ " + message;
+        errorEl.classList.remove("hidden");
     }
 }
 
 function hideError() {
-    document.getElementById("error-message")?.classList.add("hidden");
+    var errorEl = document.getElementById("error-message");
+    if (errorEl) {
+        errorEl.classList.add("hidden");
+    }
 }
 
 function downloadHTML(content, filename) {
-    const blob = new Blob([content], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    var blob = new Blob([content], { type: "text/html;charset=utf-8" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
     a.href = url;
     a.download = filename;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
 }
