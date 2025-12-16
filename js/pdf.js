@@ -2,6 +2,13 @@
 // ГЕНЕРАЦИЯ HTML ДЛЯ ПЕЧАТИ
 // ═══════════════════════════════════════════════════════
 
+// Если хочешь, чтобы маскоты в скачанном HTML всегда загружались с сайта,
+// можно явно указать базовый URL, например:
+// var STATIC_BASE_URL = "https://super-teacher-three.vercel.app";
+// или для GitHub Pages:
+// var STATIC_BASE_URL = "https://sergiodecaux.github.io/super-teacher";
+var STATIC_BASE_URL = "";
+
 var PRINT_THEMES = {
     default: { bg: "#f8f9fa", accent: "#7c3aed", emoji: "⭐🌟✨💫" },
     pirates: { bg: "#fff8e1", accent: "#5d4037", emoji: "🏴‍☠️⚓🦜💰" },
@@ -16,6 +23,32 @@ var PRINT_THEMES = {
 function getThemeStyles(themeName) {
     var theme = PRINT_THEMES[themeName] || PRINT_THEMES.default;
     return theme;
+}
+
+// Получить полный URL до маскота темы
+function getMascotUrl(themeKey) {
+    var base = (typeof STATIC_BASE_URL === "string" ? STATIC_BASE_URL : "").trim();
+
+    if (base) {
+        // Удаляем возможный завершающий слэш
+        base = base.replace(/\/$/, "");
+        return base + "/img/themes/" + themeKey + "/mascot.svg";
+    }
+
+    // Если сайт открыт по http/https — строим URL от текущего домена
+    if (typeof window !== "undefined" &&
+        window.location &&
+        window.location.protocol.indexOf("http") === 0) {
+
+        var origin = window.location.origin; // https://домен
+        // Берём путь до каталога приложения (без последнего сегмента)
+        var path = window.location.pathname.split("/").slice(0, -1).join("/");
+        // Пример: /super-teacher -> https://.../super-teacher/img/...
+        return origin + path + "/img/themes/" + themeKey + "/mascot.svg";
+    }
+
+    // Фолбэк — относительный путь
+    return "img/themes/" + themeKey + "/mascot.svg";
 }
 
 function generateWorksheetHTML(data, themeName) {
@@ -116,7 +149,7 @@ function generateWorksheetHTML(data, themeName) {
     for (var i = 0; i < tasks.length; i++) {
         var task = tasks[i];
         var levelEmoji = theme.emoji.charAt(i % theme.emoji.length) || "⭐";
-        var mascotPath = 'img/themes/' + themeKey + '/mascot.svg';
+        var mascotPath = getMascotUrl(themeKey);
         
         html += '<div class="page">';
         
