@@ -12,10 +12,9 @@ let currentMode = "ai";
 
 document.addEventListener("DOMContentLoaded", () => {
     initModeButtons();
-    initExamples();
+    initPromptBuilder();
     initConstructor();
     initButtons();
-    initQuickButtons();
     loadApiKey();
 });
 
@@ -34,57 +33,14 @@ function initModeButtons() {
             
             document.getElementById("ai-mode").classList.toggle("hidden", currentMode !== "ai");
             document.getElementById("constructor-mode").classList.toggle("hidden", currentMode !== "constructor");
+            document.getElementById("result-section").classList.add("hidden");
         });
     });
 }
 
 
 // ═══════════════════════════════════════════════════════
-// ПРИМЕРЫ ЗАПРОСОВ
-// ═══════════════════════════════════════════════════════
-
-function initExamples() {
-    const toggle = document.querySelector(".toggle-examples");
-    const content = document.querySelector(".examples-content");
-    
-    if (toggle && content) {
-        toggle.addEventListener("click", () => {
-            content.classList.toggle("hidden");
-        });
-    }
-    
-    document.querySelectorAll(".tab-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
-            btn.classList.add("active");
-            renderExamples(btn.dataset.tab);
-        });
-    });
-    
-    renderExamples("preschool");
-}
-
-function renderExamples(category) {
-    const list = document.getElementById("examples-list");
-    if (!list) return;
-    
-    const examples = EXAMPLES[category] || [];
-    
-    list.innerHTML = examples.map(ex => 
-        `<button class="example-btn">${ex}</button>`
-    ).join("");
-    
-    list.querySelectorAll(".example-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            document.getElementById("user-request").value = btn.textContent;
-            document.querySelector(".examples-content").classList.add("hidden");
-        });
-    });
-}
-
-
-// ═══════════════════════════════════════════════════════
-// КОНСТРУКТОР
+// КОНСТРУКТОР (РУЧНОЙ)
 // ═══════════════════════════════════════════════════════
 
 function initConstructor() {
@@ -174,16 +130,6 @@ function initButtons() {
         });
     }
     
-    // Очистить
-    const clearBtn = document.getElementById("clear-btn");
-    if (clearBtn) {
-        clearBtn.addEventListener("click", () => {
-            document.getElementById("user-request").value = "";
-            currentWorksheet = null;
-            hideResult();
-        });
-    }
-    
     // Создать из конструктора
     const createBtn = document.getElementById("create-worksheet-btn");
     if (createBtn) {
@@ -195,7 +141,7 @@ function initButtons() {
     if (downloadWorksheet) {
         downloadWorksheet.addEventListener("click", () => {
             if (currentWorksheet) {
-                const theme = document.getElementById("theme-select").value;
+                const theme = document.getElementById("theme-select")?.value || "default";
                 const html = generateWorksheetHTML(currentWorksheet, theme);
                 downloadHTML(html, `worksheet_${Date.now()}.html`);
             }
@@ -213,6 +159,15 @@ function initButtons() {
         });
     }
     
+    // Кнопка "Назад"
+    const backBtn = document.getElementById("back-btn");
+    if (backBtn) {
+        backBtn.addEventListener("click", () => {
+            document.getElementById("result-section").classList.add("hidden");
+            currentWorksheet = null;
+        });
+    }
+    
     // API ключ - сохранение при вводе
     const apiKeyInput = document.getElementById("api-key");
     if (apiKeyInput) {
@@ -223,18 +178,6 @@ function initButtons() {
             localStorage.setItem("groq_api_key", e.target.value);
         });
     }
-}
-
-function initQuickButtons() {
-    document.querySelectorAll(".quick-btn").forEach(btn => {
-        btn.addEventListener("click", () => {
-            const request = btn.dataset.request;
-            document.getElementById("user-request").value = request;
-            
-            // Переключаемся на AI режим
-            document.querySelectorAll(".mode-btn")[0].click();
-        });
-    });
 }
 
 
@@ -256,19 +199,19 @@ function loadApiKey() {
 // ═══════════════════════════════════════════════════════
 
 async function generateWithAI() {
-    const requestInput = document.getElementById("user-request");
     const apiKeyInput = document.getElementById("api-key");
-    
-    const request = requestInput ? requestInput.value.trim() : "";
     const apiKey = apiKeyInput ? apiKeyInput.value.trim() : "";
     
+    // Получаем промпт из конструктора
+    const request = getBuiltPrompt();
+    
     if (!request) {
-        showError("Введи описание задания или выбери пример!");
+        showError("Выбери хотя бы предмет!");
         return;
     }
     
     if (!apiKey) {
-        showError("Введи API ключ Groq! Получить бесплатно: console.groq.com/keys");
+        showError("Введи API ключ Groq! Получить: console.groq.com/keys");
         return;
     }
     
@@ -276,6 +219,8 @@ async function generateWithAI() {
         showError("Неверный формат ключа. Ключ должен начинаться с gsk_");
         return;
     }
+    
+    console.log("📝 Промпт:", request);
     
     showLoading(true);
     hideError();
@@ -339,10 +284,6 @@ function createFromConstructor() {
 function showResult() {
     if (!currentWorksheet) return;
     
-    // Скрываем пустое состояние
-    const emptyState = document.getElementById("empty-state");
-    if (emptyState) emptyState.classList.add("hidden");
-    
     // Показываем результат
     const resultSection = document.getElementById("result-section");
     if (resultSection) resultSection.classList.remove("hidden");
@@ -358,7 +299,7 @@ function showResult() {
     const tasks = currentWorksheet.tasks || [];
     const totalElements = tasks.reduce((sum, t) => sum + (t.elements?.length || 0), 0);
     const themeName = document.getElementById("theme-select")?.value || "default";
-    const theme = THEMES[themeName] || THEMES.default;
+    const theme = THEMES?.[themeName] || { emoji: "🎯", name: "Стандартная" };
     
     const statTasks = document.getElementById("stat-tasks");
     const statElements = document.getElementById("stat-elements");
@@ -373,17 +314,19 @@ function showResult() {
     if (preview) {
         preview.innerHTML = tasks.map((task, i) => {
             const color = LEVEL_COLORS[i % LEVEL_COLORS.length];
-            const elementsHTML = (task.elements || []).map(el => 
+            const elementsHTML = (task.elements || []).slice(0, 6).map(el => 
                 `<span class="element-chip">${el}</span>`
             ).join("");
+            
+            const moreCount = (task.elements?.length || 0) - 6;
+            const moreHTML = moreCount > 0 ? `<span class="element-chip more">+${moreCount}</span>` : '';
             
             return `
             <div class="task-preview" style="border-left-color: ${color}">
                 <h4>${task.level} ${task.level_name}</h4>
                 <div class="instruction">📝 ${task.instruction}</div>
                 ${task.content ? `<p>${task.content}</p>` : ''}
-                <div class="elements">${elementsHTML}</div>
-                <div class="elements-count">Упражнений: ${task.elements?.length || 0}</div>
+                <div class="elements">${elementsHTML}${moreHTML}</div>
             </div>`;
         }).join("");
     }
@@ -393,14 +336,9 @@ function showResult() {
     if (motivationBox) {
         motivationBox.textContent = "🎉 " + currentWorksheet.motivation;
     }
-}
-
-function hideResult() {
-    const resultSection = document.getElementById("result-section");
-    const emptyState = document.getElementById("empty-state");
     
-    if (resultSection) resultSection.classList.add("hidden");
-    if (emptyState) emptyState.classList.remove("hidden");
+    // Прокручиваем к результату
+    resultSection?.scrollIntoView({ behavior: "smooth" });
 }
 
 
@@ -410,8 +348,14 @@ function hideResult() {
 
 function showLoading(show) {
     const loading = document.getElementById("loading");
+    const generateBtn = document.getElementById("generate-btn");
+    
     if (loading) {
         loading.classList.toggle("hidden", !show);
+    }
+    if (generateBtn) {
+        generateBtn.disabled = show;
+        generateBtn.textContent = show ? "⏳ Генерация..." : "✨ Создать задания";
     }
 }
 

@@ -36,8 +36,6 @@
                     <option value="animals">🦁 Животные</option>
                     <option value="sweets">🍭 Сладости</option>
                     <option value="dinosaurs">🦖 Динозавры</option>
-                    <option value="mickey">🐭 Микки Маус</option>
-                    <option value="school">📚 Школа</option>
                     <option value="fairytale">🏰 Сказки</option>
                     <option value="nature">🌿 Природа</option>
                 </select>
@@ -59,45 +57,121 @@
         <!-- Основной контент -->
         <main class="main-content">
             
-            <!-- AI Генератор -->
+            <!-- AI Генератор с конструктором промптов -->
             <section id="ai-mode" class="mode-section active">
                 <h2>🤖 AI-генератор заданий</h2>
-                <p class="subtitle">Опиши тему — получи готовый рабочий лист</p>
+                <p class="subtitle">Настрой параметры — получи идеальный рабочий лист</p>
                 
-                <div class="input-section">
-                    <textarea id="user-request" placeholder="Например: Математика, 1 класс. Сложение до 10"></textarea>
-                </div>
-                
-                <div class="examples-section">
-                    <button class="toggle-examples">💡 Примеры запросов</button>
-                    <div class="examples-content hidden">
-                        <div class="examples-tabs">
-                            <button class="tab-btn active" data-tab="preschool">🎒 Дошкольники</button>
-                            <button class="tab-btn" data-tab="math1">📗 Математика 1кл</button>
-                            <button class="tab-btn" data-tab="russian1">📗 Русский 1кл</button>
-                            <button class="tab-btn" data-tab="math2">📘 Математика 2кл</button>
-                            <button class="tab-btn" data-tab="math34">📙 Математика 3-4кл</button>
-                            <button class="tab-btn" data-tab="logic">🧩 Логика</button>
+                <!-- Конструктор промпта -->
+                <div class="prompt-builder">
+                    
+                    <!-- Шаг 1: Предмет -->
+                    <div class="builder-row">
+                        <div class="builder-group">
+                            <label>📚 Предмет:</label>
+                            <select id="subject-select">
+                                <option value="">— Выбери —</option>
+                                <option value="math">🧮 Математика</option>
+                                <option value="russian">📝 Русский язык</option>
+                                <option value="reading">📖 Чтение</option>
+                                <option value="world">🌍 Окружающий мир</option>
+                                <option value="logic">🧩 Логика</option>
+                                <option value="english">🇬🇧 Английский</option>
+                            </select>
                         </div>
-                        <div class="examples-list" id="examples-list"></div>
+                        
+                        <div class="builder-group">
+                            <label>🎓 Класс:</label>
+                            <select id="grade-select">
+                                <option value="">— Выбери —</option>
+                                <option value="preschool">💒 Дошкольники (5-6 лет)</option>
+                                <option value="1">1 класс</option>
+                                <option value="2">2 класс</option>
+                                <option value="3">3 класс</option>
+                                <option value="4">4 класс</option>
+                            </select>
+                        </div>
                     </div>
+                    
+                    <!-- Шаг 2: Тема -->
+                    <div class="builder-row">
+                        <div class="builder-group full-width">
+                            <label>📋 Тема:</label>
+                            <select id="topic-select">
+                                <option value="">— Сначала выбери предмет и класс —</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <!-- Своя тема -->
+                    <div class="builder-row">
+                        <div class="builder-group full-width">
+                            <label>✏️ Или напиши свою тему:</label>
+                            <input type="text" id="custom-topic" placeholder="Например: Таблица умножения на 7">
+                        </div>
+                    </div>
+                    
+                    <!-- Шаг 3: Типы заданий -->
+                    <div class="builder-row">
+                        <div class="builder-group full-width">
+                            <label>🎯 Типы заданий (выбери нужные):</label>
+                            <div class="task-types-grid" id="task-types">
+                                <!-- Заполняется через JS -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Шаг 4: Настройки -->
+                    <div class="builder-row">
+                        <div class="builder-group">
+                            <label>📊 Сложность:</label>
+                            <div class="difficulty-selector">
+                                <button class="diff-btn active" data-diff="easy">😊 Лёгкие</button>
+                                <button class="diff-btn" data-diff="medium">🤔 Средние</button>
+                                <button class="diff-btn" data-diff="hard">😤 Сложные</button>
+                                <button class="diff-btn" data-diff="mixed">🎲 Разные</button>
+                            </div>
+                        </div>
+                        
+                        <div class="builder-group">
+                            <label>🔢 Заданий: <span id="tasks-num-value">5</span></label>
+                            <input type="range" id="tasks-num" min="3" max="7" value="5">
+                        </div>
+                    </div>
+                    
+                    <!-- Дополнительно -->
+                    <div class="builder-row">
+                        <div class="builder-group full-width">
+                            <label>💬 Дополнительные пожелания (необязательно):</label>
+                            <input type="text" id="extra-wishes" placeholder="Например: Добавь задачи про животных, используй числа до 20">
+                        </div>
+                    </div>
+                    
+                    <!-- Превью промпта -->
+                    <div class="prompt-preview">
+                        <label>📝 Итоговый запрос:</label>
+                        <div id="prompt-preview-text" class="preview-text">
+                            Выбери параметры выше...
+                        </div>
+                    </div>
+                    
                 </div>
                 
+                <!-- Кнопки -->
                 <div class="buttons-row">
-                    <button id="generate-btn" class="btn primary">✨ Создать задания</button>
-                    <button id="demo-btn" class="btn secondary">👀 Демо-пример</button>
-                    <button id="clear-btn" class="btn danger">🗑️</button>
+                    <button id="generate-btn" class="btn primary large">✨ Создать задания</button>
+                    <button id="demo-btn" class="btn secondary">👀 Демо</button>
                 </div>
                 
                 <div id="loading" class="loading hidden">
                     <div class="spinner"></div>
-                    <p>🦉 Мудрая сова думает...</p>
+                    <p>🦉 Мудрая сова составляет задания...</p>
                 </div>
                 
                 <div id="error-message" class="error hidden"></div>
             </section>
             
-            <!-- Конструктор -->
+            <!-- Конструктор (ручной) -->
             <section id="constructor-mode" class="mode-section hidden">
                 <h2>✏️ Конструктор карточек</h2>
                 <p class="subtitle">Создай задания вручную</p>
@@ -154,7 +228,7 @@
                     <h3>📥 Скачать для печати</h3>
                     <div class="download-buttons">
                         <button id="download-worksheet" class="btn primary">📄 Рабочий лист</button>
-                        <button id="download-answers" class="btn secondary">🔑 Ответы для учителя</button>
+                        <button id="download-answers" class="btn secondary">🔑 Ответы</button>
                     </div>
                     <p class="hint">💡 Открой HTML → Ctrl+P → Сохранить как PDF</p>
                 </div>
@@ -165,28 +239,8 @@
                 </div>
                 
                 <div id="motivation-box" class="motivation-box"></div>
-            </section>
-            
-            <!-- Пустое состояние -->
-            <section id="empty-state" class="empty-state">
-                <div class="empty-content">
-                    <div class="empty-icon">🦉</div>
-                    <h2>Добро пожаловать!</h2>
-                    <p>
-                        <strong>🤖 AI-генератор</strong> — опиши тему и получи готовые задания<br><br>
-                        <strong>✏️ Конструктор</strong> — создай задания вручную
-                    </p>
-                </div>
                 
-                <div class="quick-start">
-                    <h3>⚡ Быстрый старт:</h3>
-                    <div class="quick-buttons">
-                        <button class="quick-btn" data-request="Математика 1 класс: сложение до 10">Математика 1 класс</button>
-                        <button class="quick-btn" data-request="Русский язык: буква А">Русский: буква А</button>
-                        <button class="quick-btn" data-request="Логика: найди лишнее">Логика: найди лишнее</button>
-                        <button class="quick-btn" data-request="Счёт до 10 для дошкольников">Счёт для малышей</button>
-                    </div>
-                </div>
+                <button id="back-btn" class="btn secondary full-width">← Создать новый лист</button>
             </section>
             
         </main>
@@ -195,6 +249,7 @@
     <script src="js/templates.js"></script>
     <script src="js/ai.js"></script>
     <script src="js/pdf.js"></script>
+    <script src="js/prompt-builder.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>
