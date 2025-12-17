@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════
-// ГЕНЕРАЦИЯ HTML ДЛЯ ПЕЧАТИ — КОМПАКТНАЯ ВЕРСИЯ
-// 2 карточки на странице A4
+// ГЕНЕРАЦИЯ HTML ДЛЯ ПЕЧАТИ — 3 КАРТОЧКИ НА СТРАНИЦУ
+// Карточки для вырезания и вклеивания в тетрадь
 // ═══════════════════════════════════════════════════════
 
 var STATIC_BASE_URL = "";
@@ -46,7 +46,8 @@ function generateWorksheetHTML(data, themeName) {
     var theme = getThemeStyles(themeKey);
     var tasks = data.tasks || [];
     var totalTasks = tasks.length;
-    var totalPages = Math.ceil(tasks.length / 2); // 2 карточки на страницу
+    var cardsPerPage = 3;
+    var totalPages = Math.ceil(tasks.length / cardsPerPage);
     
     var html = '<!DOCTYPE html><html lang="ru"><head><meta charset="UTF-8">';
     html += '<title>' + escapeHtmlPdf(data.title || "Рабочий лист") + '</title>';
@@ -59,7 +60,7 @@ function generateWorksheetHTML(data, themeName) {
     
     // Кнопки печати
     html += '.print-btn-container { position: fixed; bottom: 20px; right: 20px; z-index: 1000; display: flex; gap: 10px; }';
-    html += '.print-btn { padding: 12px 24px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; font-family: Comfortaa, sans-serif; transition: transform 0.2s, box-shadow 0.2s; }';
+    html += '.print-btn { padding: 12px 24px; font-size: 16px; font-weight: 600; border: none; border-radius: 10px; cursor: pointer; font-family: Comfortaa, sans-serif; transition: transform 0.2s; }';
     html += '.print-btn:hover { transform: scale(1.05); }';
     html += '.print-btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; box-shadow: 0 4px 15px rgba(124, 58, 237, 0.4); }';
     html += '.print-btn-secondary { background: white; color: #7c3aed; border: 2px solid #7c3aed; }';
@@ -68,80 +69,70 @@ function generateWorksheetHTML(data, themeName) {
     html += '.page { ';
     html += '  width: 210mm; ';
     html += '  min-height: 297mm; ';
-    html += '  padding: 8mm 10mm; ';
+    html += '  padding: 5mm 7mm; ';
     html += '  margin: 10px auto; ';
     html += '  background: white; ';
     html += '  box-shadow: 0 2px 10px rgba(0,0,0,0.1); ';
     html += '  page-break-after: always; ';
     html += '  display: flex; ';
     html += '  flex-direction: column; ';
-    html += '  gap: 6mm; ';
+    html += '  gap: 0; ';
     html += '}';
     html += '.page:last-child { page-break-after: auto; }';
     
-    // Карточка задания (половина страницы)
+    // Карточка задания (1/3 страницы ≈ 93mm высота)
     html += '.card { ';
     html += '  background: ' + theme.bg + '; ';
-    html += '  border-radius: 12px; ';
-    html += '  padding: 10px 14px; ';
-    html += '  flex: 1; ';
+    html += '  border: 2px dashed #aaa; '; // Пунктир для вырезания!
+    html += '  border-radius: 8px; ';
+    html += '  padding: 6px 10px; ';
+    html += '  height: 93mm; ';
     html += '  display: flex; ';
     html += '  flex-direction: column; ';
-    html += '  min-height: 138mm; ';
-    html += '  max-height: 140mm; ';
     html += '  overflow: hidden; ';
-    html += '  border: 2px solid ' + theme.accent + '22; ';
+    html += '  position: relative; ';
     html += '}';
     
-    // Заголовок карточки
-    html += '.card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; flex-shrink: 0; }';
+    // Ножницы — подсказка для вырезания
+    html += '.scissors { position: absolute; top: -2px; left: 10px; font-size: 10px; color: #999; }';
+    
+    // Заголовок карточки (компактный)
+    html += '.card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-shrink: 0; }';
+    html += '.card-mascot img { width: 28px; height: 28px; object-fit: contain; }';
     html += '.card-header-text { flex: 1; }';
-    html += '.card-title { font-size: 14px; font-weight: 700; color: ' + theme.accent + '; margin-bottom: 2px; }';
-    html += '.card-subtitle { font-size: 10px; color: #666; }';
-    html += '.card-level { font-size: 11px; margin-top: 3px; color: #333; font-weight: 600; }';
-    html += '.card-mascot img { width: 40px; height: 40px; object-fit: contain; }';
+    html += '.card-title { font-size: 11px; font-weight: 700; color: ' + theme.accent + '; line-height: 1.2; }';
+    html += '.card-level { font-size: 9px; color: #555; margin-top: 1px; }';
     
-    // Инфо-строка
-    html += '.info-row { display: flex; gap: 10px; margin-bottom: 6px; flex-wrap: wrap; flex-shrink: 0; }';
-    html += '.info-item { display: flex; align-items: center; gap: 3px; font-size: 10px; }';
-    html += '.info-item span:first-child { font-weight: 600; }';
-    html += '.info-line { border-bottom: 1px solid #333; min-width: 50px; height: 14px; }';
+    // Поля: имя и дата в одну строку
+    html += '.info-row { display: flex; gap: 8px; margin-bottom: 4px; flex-shrink: 0; font-size: 9px; }';
+    html += '.info-item { display: flex; align-items: center; gap: 2px; }';
+    html += '.info-line { border-bottom: 1px solid #555; width: 45px; height: 12px; }';
     
-    // Инструкция
-    html += '.instruction { background: white; padding: 6px 10px; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid ' + theme.accent + '; flex-shrink: 0; }';
-    html += '.instruction-title { font-weight: 600; font-size: 11px; }';
-    html += '.instruction-content { font-size: 10px; font-style: italic; color: #555; margin-top: 2px; }';
+    // Инструкция (очень компактная)
+    html += '.instruction { background: white; padding: 4px 8px; border-radius: 6px; margin-bottom: 4px; border-left: 3px solid ' + theme.accent + '; flex-shrink: 0; }';
+    html += '.instruction-title { font-weight: 600; font-size: 9px; line-height: 1.3; }';
+    html += '.instruction-content { font-size: 8px; color: #555; margin-top: 2px; line-height: 1.2; }';
     
-    // Элементы
-    html += '.elements { margin-bottom: 6px; flex-shrink: 0; }';
-    html += '.element { background: white; padding: 4px 8px; margin-bottom: 3px; border-radius: 6px; font-size: 11px; border: 1px solid #e0e0e0; line-height: 1.3; }';
+    // Элементы задания
+    html += '.elements { flex: 1; overflow: hidden; margin-bottom: 3px; }';
+    html += '.element { background: white; padding: 3px 6px; margin-bottom: 2px; border-radius: 4px; font-size: 10px; border: 1px solid #ddd; line-height: 1.25; }';
     
-    // Место для работы (компактное)
-    html += '.work-area { border: 1.5px dashed #ccc; border-radius: 8px; padding: 6px 10px; flex: 1; min-height: 30px; }';
-    html += '.work-area-title { font-size: 9px; color: #888; margin-bottom: 4px; }';
-    html += '.work-lines { display: flex; flex-direction: column; gap: 0; }';
-    html += '.work-line { border-bottom: 1px solid #ddd; height: 16px; }';
+    // Место для ответа (минимальное)
+    html += '.work-area { border: 1px solid #ccc; border-radius: 6px; padding: 3px 6px; min-height: 18px; background: #fafafa; flex-shrink: 0; }';
+    html += '.work-area-title { font-size: 8px; color: #888; }';
+    html += '.work-line { border-bottom: 1px solid #ddd; height: 14px; }';
     
-    // Футер карточки
-    html += '.card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 5px; border-top: 1px solid #ddd; margin-top: 5px; flex-shrink: 0; }';
-    html += '.rating { font-size: 12px; color: #ddd; letter-spacing: 1px; }';
-    html += '.rating-label { font-size: 9px; color: #888; }';
-    html += '.done-msg { font-size: 10px; color: ' + theme.accent + '; font-weight: 600; }';
-    html += '.teacher-sign { font-size: 9px; color: #666; }';
-    
-    // Разделитель между карточками
-    html += '.card-divider { border-top: 1px dashed #ccc; margin: 0; flex-shrink: 0; }';
-    
-    // Номер страницы
-    html += '.page-footer { text-align: center; font-size: 9px; color: #999; padding-top: 4px; flex-shrink: 0; }';
-    html += '.theme-icons { letter-spacing: 2px; margin-right: 8px; }';
+    // Футер карточки (минимальный)
+    html += '.card-footer { display: flex; justify-content: space-between; align-items: center; padding-top: 3px; flex-shrink: 0; font-size: 8px; color: #888; }';
+    html += '.rating { font-size: 10px; color: #ddd; letter-spacing: 0; }';
+    html += '.task-num { color: ' + theme.accent + '; font-weight: 600; }';
     
     // Стили для печати
     html += '@media print { ';
     html += '  body { background: white; }';
     html += '  .print-btn-container { display: none !important; }';
-    html += '  .page { margin: 0; box-shadow: none; min-height: 297mm; width: 210mm; }';
-    html += '  .card { break-inside: avoid; }';
+    html += '  .page { margin: 0; box-shadow: none; min-height: 297mm; width: 210mm; padding: 5mm 7mm; }';
+    html += '  .card { border: 2px dashed #888; }'; // Чётче для печати
     html += '  @page { size: A4; margin: 0; }';
     html += '}';
     
@@ -153,90 +144,81 @@ function generateWorksheetHTML(data, themeName) {
     html += '<button class="print-btn print-btn-secondary" onclick="window.close()">✕ Закрыть</button>';
     html += '</div>';
     
-    // Генерируем страницы (по 2 карточки на страницу)
+    // Генерируем страницы (по 3 карточки)
     for (var pageNum = 0; pageNum < totalPages; pageNum++) {
         html += '<div class="page">';
         
-        // Две карточки на странице
-        for (var cardIdx = 0; cardIdx < 2; cardIdx++) {
-            var taskIdx = pageNum * 2 + cardIdx;
+        // Три карточки на странице
+        for (var cardIdx = 0; cardIdx < cardsPerPage; cardIdx++) {
+            var taskIdx = pageNum * cardsPerPage + cardIdx;
             if (taskIdx >= tasks.length) break;
             
             var task = tasks[taskIdx];
             var levelEmoji = theme.emoji.charAt(taskIdx % theme.emoji.length) || "⭐";
             var mascotPath = getMascotUrl(themeKey);
             
-            // Добавляем разделитель между карточками
-            if (cardIdx === 1) {
-                html += '<div class="card-divider"></div>';
-            }
-            
             html += '<div class="card">';
+            
+            // Ножницы
+            html += '<div class="scissors">✂️ - - - - -</div>';
             
             // Заголовок
             html += '<div class="card-header">';
-            html += '  <div class="card-header-text">';
-            html += '    <div class="card-title">' + levelEmoji + ' ' + escapeHtmlPdf(data.title || "Рабочий лист") + '</div>';
-            html += '    <div class="card-subtitle">' + escapeHtmlPdf(data.subtitle || "") + '</div>';
-            html += '    <div class="card-level">' + escapeHtmlPdf(task.level || "⭐") + ' ' + escapeHtmlPdf(task.level_name || "Задание") + '</div>';
-            html += '  </div>';
             html += '  <div class="card-mascot"><img src="' + mascotPath + '" alt=""></div>';
+            html += '  <div class="card-header-text">';
+            html += '    <div class="card-title">' + levelEmoji + ' ' + escapeHtmlPdf(data.title || "Задание") + '</div>';
+            html += '    <div class="card-level">' + escapeHtmlPdf(task.level || "⭐") + ' ' + escapeHtmlPdf(task.level_name || "") + '</div>';
+            html += '  </div>';
             html += '</div>';
             
-            // Поля для имени
+            // Имя и дата
             html += '<div class="info-row">';
-            html += '<div class="info-item"><span>👤</span><div class="info-line"></div></div>';
-            html += '<div class="info-item"><span>📅</span><div class="info-line"></div></div>';
-            html += '<div class="info-item"><span>📚</span><div class="info-line"></div></div>';
+            html += '<div class="info-item">👤<div class="info-line"></div></div>';
+            html += '<div class="info-item">📅<div class="info-line"></div></div>';
+            html += '<div class="info-item">📚<div class="info-line"></div></div>';
             html += '</div>';
             
             // Инструкция
             html += '<div class="instruction">';
             html += '<div class="instruction-title">📝 ' + escapeHtmlPdf(task.instruction || "Выполни задание") + '</div>';
-            if (task.content) {
+            if (task.content && task.content.length < 80) {
                 html += '<div class="instruction-content">' + escapeHtmlPdf(task.content) + '</div>';
             }
             html += '</div>';
             
-            // Элементы (ограничиваем количество для компактности)
+            // Элементы (ограничиваем для компактности)
             if (task.elements && task.elements.length > 0) {
                 html += '<div class="elements">';
-                var maxElements = Math.min(task.elements.length, 8); // Максимум 8 элементов
+                var maxElements = Math.min(task.elements.length, 6); // Макс 6 элементов
                 for (var j = 0; j < maxElements; j++) {
-                    html += '<div class="element">' + escapeHtmlPdf(task.elements[j]) + '</div>';
+                    // Обрезаем длинные элементы
+                    var elemText = task.elements[j];
+                    if (elemText.length > 50) {
+                        elemText = elemText.substring(0, 47) + '...';
+                    }
+                    html += '<div class="element">' + escapeHtmlPdf(elemText) + '</div>';
                 }
                 if (task.elements.length > maxElements) {
-                    html += '<div class="element" style="color: #888; font-style: italic;">... и ещё ' + (task.elements.length - maxElements) + '</div>';
+                    html += '<div class="element" style="color:#888; font-style:italic;">+ещё ' + (task.elements.length - maxElements) + '</div>';
                 }
                 html += '</div>';
             }
             
-            // Рабочая зона (компактная)
+            // Место для ответа (1 линия)
             html += '<div class="work-area">';
-            html += '<div class="work-area-title">✏️ Решение:</div>';
-            html += '<div class="work-lines">';
-            var numLines = 3; // Меньше линий
-            for (var k = 0; k < numLines; k++) {
-                html += '<div class="work-line"></div>';
-            }
-            html += '</div>';
+            html += '<div class="work-area-title">✏️ Ответ:</div>';
+            html += '<div class="work-line"></div>';
             html += '</div>';
             
             // Футер
             html += '<div class="card-footer">';
-            html += '<div>';
-            html += '<div class="rating-label">Оценка:</div>';
             html += '<div class="rating">☆☆☆☆☆</div>';
-            html += '</div>';
-            html += '<div class="done-msg">✓ Задание ' + (taskIdx + 1) + '</div>';
-            html += '<div class="teacher-sign">Учитель: _____</div>';
+            html += '<div class="task-num">№' + (taskIdx + 1) + '</div>';
+            html += '<div>Учитель: ____</div>';
             html += '</div>';
             
             html += '</div>'; // .card
         }
-        
-        // Футер страницы
-        html += '<div class="page-footer"><span class="theme-icons">' + theme.emoji + '</span>Страница ' + (pageNum + 1) + ' из ' + totalPages + '</div>';
         
         html += '</div>'; // .page
     }
@@ -253,40 +235,42 @@ function generateAnswersHTML(data) {
     html += '<link href="https://fonts.googleapis.com/css2?family=Comfortaa:wght@400;600;700&display=swap" rel="stylesheet">';
     html += '<style>';
     html += '* { box-sizing: border-box; }';
-    html += 'body { font-family: Comfortaa, sans-serif; padding: 15px; max-width: 210mm; margin: 0 auto; background: #f5f5f5; font-size: 12px; }';
+    html += 'body { font-family: Comfortaa, sans-serif; padding: 10px; max-width: 210mm; margin: 0 auto; background: #f5f5f5; font-size: 11px; }';
     
     // Кнопки
     html += '.print-btn-container { position: fixed; bottom: 15px; right: 15px; z-index: 1000; display: flex; gap: 8px; }';
-    html += '.print-btn { padding: 10px 20px; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; font-family: Comfortaa, sans-serif; }';
+    html += '.print-btn { padding: 10px 18px; font-size: 14px; font-weight: 600; border: none; border-radius: 8px; cursor: pointer; font-family: Comfortaa, sans-serif; }';
     html += '.print-btn:hover { transform: scale(1.05); }';
     html += '.print-btn-primary { background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%); color: white; }';
     html += '.print-btn-secondary { background: white; color: #7c3aed; border: 2px solid #7c3aed; }';
     
-    html += '.container { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 50px; }';
-    html += 'h1 { color: #7c3aed; margin-bottom: 15px; font-size: 18px; }';
-    html += '.task { background: #f8f9fa; padding: 12px; margin-bottom: 12px; border-radius: 10px; border-left: 3px solid #7c3aed; }';
-    html += '.task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }';
-    html += '.task-title { font-weight: 600; font-size: 13px; color: #333; }';
-    html += '.task-level { font-size: 12px; color: #7c3aed; }';
-    html += '.answers { display: flex; flex-direction: column; gap: 4px; }';
-    html += '.answer { display: flex; gap: 8px; padding: 6px 10px; background: white; border-radius: 6px; font-size: 11px; border: 1px solid #e0e0e0; }';
-    html += '.answer-num { font-weight: 600; color: #7c3aed; min-width: 20px; }';
+    html += '.container { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-top: 45px; }';
+    html += 'h1 { color: #7c3aed; margin-bottom: 12px; font-size: 16px; }';
+    html += '.task { background: #f8f9fa; padding: 10px; margin-bottom: 10px; border-radius: 8px; border-left: 3px solid #7c3aed; }';
+    html += '.task-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }';
+    html += '.task-title { font-weight: 600; font-size: 12px; color: #333; }';
+    html += '.task-level { font-size: 11px; color: #7c3aed; }';
+    html += '.answers { display: flex; flex-direction: column; gap: 3px; }';
+    html += '.answer { display: flex; gap: 6px; padding: 4px 8px; background: white; border-radius: 5px; font-size: 10px; border: 1px solid #e0e0e0; }';
+    html += '.answer-num { font-weight: 600; color: #7c3aed; min-width: 18px; }';
     html += '.answer-text { color: #333; }';
-    html += '.no-answers { color: #999; font-style: italic; padding: 8px; font-size: 11px; }';
+    html += '.no-answers { color: #999; font-style: italic; padding: 6px; font-size: 10px; }';
     
-    // Печать
+    // Печать — компактнее
     html += '@media print { ';
-    html += '  body { background: white; padding: 10px; }';
+    html += '  body { background: white; padding: 5mm; font-size: 10px; }';
     html += '  .print-btn-container { display: none !important; }';
-    html += '  .container { box-shadow: none; margin-top: 0; padding: 10px; }';
-    html += '  .task { break-inside: avoid; }';
+    html += '  .container { box-shadow: none; margin-top: 0; padding: 5px; }';
+    html += '  .task { break-inside: avoid; padding: 6px; margin-bottom: 6px; }';
+    html += '  h1 { font-size: 14px; margin-bottom: 8px; }';
+    html += '  .answer { padding: 3px 6px; font-size: 9px; }';
     html += '}';
     
     html += '</style></head><body>';
     
     // Кнопки
     html += '<div class="print-btn-container">';
-    html += '<button class="print-btn print-btn-primary" onclick="window.print()">🖨️ Печать</button>';
+    html += '<button class="print-btn print-btn-primary" onclick="window.print()">🖨️</button>';
     html += '<button class="print-btn print-btn-secondary" onclick="window.close()">✕</button>';
     html += '</div>';
     
@@ -298,7 +282,7 @@ function generateAnswersHTML(data) {
         html += '<div class="task">';
         
         html += '<div class="task-header">';
-        html += '<div class="task-title">' + (i+1) + '. ' + escapeHtmlPdf(task.level_name || "Задание") + '</div>';
+        html += '<div class="task-title">№' + (i+1) + '. ' + escapeHtmlPdf(task.level_name || "Задание") + '</div>';
         html += '<div class="task-level">' + escapeHtmlPdf(task.level || "⭐") + '</div>';
         html += '</div>';
         
